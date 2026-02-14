@@ -11,6 +11,8 @@ import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, 
 import { calculateLongTermProjection, getInvestmentMetrics } from '../utils/simulationProjection';
 import { Slider } from '../components/ui/Slider';
 import { PrintLayout } from '../components/PrintLayout';
+import { generateExitTable } from '../utils/exitStrategy';
+import { calculateDepreciation } from '../utils/taxCalculations';
 
 // New Landscape Report Components
 import { ReportCover } from '../components/report/ReportCover';
@@ -20,7 +22,7 @@ import { ChartPage } from '../components/report/ChartPage';
 import { CashFlowPage } from '../components/report/CashFlowPage';
 
 export const Screen5_Analysis: React.FC = () => {
-    const { data, updateData, prevStep } = useSimulationStore();
+    const { data, updateData, updateAdvancedSettings, prevStep } = useSimulationStore();
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const csvInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -129,6 +131,25 @@ export const Screen5_Analysis: React.FC = () => {
 
     // Investment Metrics
     const investmentMetrics = useMemo(() => getInvestmentMetrics(data, projectionData), [data, projectionData]);
+
+    // Exit Strategy
+    const exitCapRate = data.advancedSettings?.exitCapRate ?? 6.0;
+    const depInfo = useMemo(() => calculateDepreciation(
+        data.property.structure,
+        data.budget.buildingWorksCost * 10000,
+        data.advancedSettings?.equipmentRatio ?? 0.2,
+        data.mode === 'investment_used',
+        data.advancedSettings?.buildingAge ?? 0,
+    ), [data.property.structure, data.budget.buildingWorksCost, data.advancedSettings?.equipmentRatio, data.mode, data.advancedSettings?.buildingAge]);
+
+    const exitTable = useMemo(() => generateExitTable(
+        projectionData,
+        exitCapRate,
+        data.budget.buildingWorksCost * 10000,
+        data.budget.landPrice * 10000,
+        data.funding.ownCapital * 10000,
+        depInfo,
+    ), [projectionData, exitCapRate, data.budget.buildingWorksCost, data.budget.landPrice, data.funding.ownCapital, depInfo]);
 
 
     // --- Chart Data ---
@@ -437,6 +458,63 @@ export const Screen5_Analysis: React.FC = () => {
                     </Card>
                 </div>
             </div>
+
+            {/* Exit Strategy Section */}
+            <Card className="!bg-gradient-to-br from-violet-50 to-indigo-50 border-violet-200 shadow-lg no-print">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-bold text-violet-800 flex items-center gap-2">
+                        <TrendingUp className="h-5 w-5" /> 出口戦略シミュレーション
+                    </h3>
+                    <div className="flex items-center gap-3">
+                        <span className="text-sm text-violet-600 font-medium">売却時Cap Rate:</span>
+                        <Slider
+                            label=""
+                            min={3}
+                            max={12}
+                            step={0.5}
+                            value={exitCapRate}
+                            onChange={(v) => updateAdvancedSettings({ exitCapRate: v })}
+                        />
+                        <span className="text-lg font-bold text-violet-700 w-16">{exitCapRate.toFixed(1)}%</span>
+                    </div>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm border-collapse">
+                        <thead>
+                            <tr className="bg-violet-600 text-white text-xs uppercase tracking-wider">
+                                <th className="py-2 px-3 text-center rounded-tl-lg">売却年</th>
+                                <th className="py-2 px-3 text-right">売却価格</th>
+                                <th className="py-2 px-3 text-right">ローン残債</th>
+                                <th className="py-2 px-3 text-right">売却請経費</th>
+                                <th className="py-2 px-3 text-right">譲渡所得税</th>
+                                <th className="py-2 px-3 text-right">売却手取り</th>
+                                <th className="py-2 px-3 text-right">期間累CF</th>
+                                <th className="py-2 px-3 text-right">トータルリターン</th>
+                                <th className="py-2 px-3 text-right rounded-tr-lg">年率リターン</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {exitTable.map((row, i) => (
+                                <tr key={row.saleYear} className={`border-b border-violet-100 ${i % 2 !== 0 ? 'bg-violet-50/50' : 'bg-white'} ${row.saleYear === 5 ? '!bg-amber-50 font-semibold' : ''}`}>
+                                    <td className="py-2 px-3 text-center font-bold text-violet-700">{row.saleYear}年目{row.saleYear <= 5 ? ' ✨' : ''}</td>
+                                    <td className="py-2 px-3 text-right font-mono">{formatCurrency(row.salePrice)}</td>
+                                    <td className="py-2 px-3 text-right font-mono text-slate-500">{formatCurrency(row.loanBalanceAtSale)}</td>
+                                    <td className="py-2 px-3 text-right font-mono text-amber-600">{formatCurrency(row.saleExpenses.total)}</td>
+                                    <td className="py-2 px-3 text-right font-mono text-rose-500">{formatCurrency(row.capitalGainsTax)}</td>
+                                    <td className="py-2 px-3 text-right font-mono font-bold text-blue-700">{formatCurrency(row.netSaleProceeds)}</td>
+                                    <td className="py-2 px-3 text-right font-mono text-slate-600">{formatCurrency(row.totalCashflowDuringHolding)}</td>
+                                    <td className={`py-2 px-3 text-right font-mono font-bold ${row.totalReturn >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>{formatCurrency(row.totalReturn)}</td>
+                                    <td className="py-2 px-3 text-right font-mono font-bold text-indigo-600">{formatPercent(row.annualizedReturn * 100)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+                <div className="mt-3 flex gap-4 text-xs text-violet-500">
+                    <span>※ 5年以下の保有: 短期譲渡税率 39.63%</span>
+                    <span>※ 5年超の保有: 長期譲渡税率 20.315%</span>
+                </div>
+            </Card>
 
             <div className="flex justify-start pt-6 border-t border-slate-200 no-print">
                 <Button variant="ghost" onClick={prevStep} className="flex items-center gap-2">

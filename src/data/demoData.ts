@@ -79,5 +79,6 @@ export const DEMO_DATA: SimulationData = {
         otherIncome: 5_000_000, // 給与所得500万円
         equipmentRatio: 0.2,
         buildingAge: 0,
+        exitCapRate: 6.0,
     }
 };

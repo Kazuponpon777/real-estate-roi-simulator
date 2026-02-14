@@ -114,6 +114,8 @@ export interface AdvancedSettings {
     otherIncome: number; // 他の所得 (円/年) - for individual tax bracket
     equipmentRatio: number; // 設備比率 (0-1, e.g. 0.2 = 20%)
     buildingAge: number; // 築年数 (中古物件用)
+    // Exit Strategy
+    exitCapRate: number; // 売却時想定Cap Rate (%)
 }
 
 export interface SimulationData {
@@ -235,6 +237,7 @@ const INITIAL_DATA: SimulationData = {
         otherIncome: 0,
         equipmentRatio: 0.2,
         buildingAge: 0,
+        exitCapRate: 6.0,
     },
 };
 
