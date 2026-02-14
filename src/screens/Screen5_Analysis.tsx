@@ -13,6 +13,7 @@ import { Slider } from '../components/ui/Slider';
 import { PrintLayout } from '../components/PrintLayout';
 import { generateExitTable } from '../utils/exitStrategy';
 import { calculateDepreciation } from '../utils/taxCalculations';
+import { generateScenarios, generateSensitivityMatrix } from '../utils/scenarioAnalysis';
 
 // New Landscape Report Components
 import { ReportCover } from '../components/report/ReportCover';
@@ -150,6 +151,11 @@ export const Screen5_Analysis: React.FC = () => {
         data.funding.ownCapital * 10000,
         depInfo,
     ), [projectionData, exitCapRate, data.budget.buildingWorksCost, data.budget.landPrice, data.funding.ownCapital, depInfo]);
+
+    // Scenario Comparison
+    const scenarios = useMemo(() => generateScenarios(data), [data]);
+    const sensitivityMatrix = useMemo(() => generateSensitivityMatrix(data), [data]);
+    const rentDeclineHeaders = [0, 0.5, 1.0, 1.5, 2.0];
 
 
     // --- Chart Data ---
@@ -515,6 +521,116 @@ export const Screen5_Analysis: React.FC = () => {
                     <span>※ 5年超の保有: 長期譲渡税率 20.315%</span>
                 </div>
             </Card>
+
+            {/* Scenario Comparison */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 no-print">
+                <Card className="!bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200 shadow-lg">
+                    <h3 className="text-lg font-bold text-blue-800 mb-4">シナリオ比較（楽観 / 標準 / 悲観）</h3>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="border-b-2 border-blue-200">
+                                    <th className="py-2 px-2 text-left text-slate-500 text-xs">指標</th>
+                                    {scenarios.map(s => (
+                                        <th key={s.name} className="py-2 px-2 text-right" style={{ color: s.color }}>
+                                            <span className="inline-flex items-center gap-1">
+                                                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: s.color }} />
+                                                {s.label}
+                                            </span>
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody className="font-mono text-sm">
+                                <tr className="border-b border-slate-100">
+                                    <td className="py-2 px-2 text-slate-600">NOI (初年度)</td>
+                                    {scenarios.map(s => <td key={s.name} className="py-2 px-2 text-right">{formatCurrency(s.year1Noi)}</td>)}
+                                </tr>
+                                <tr className="border-b border-slate-100 bg-blue-50/30">
+                                    <td className="py-2 px-2 text-slate-600">BTCF (初年度)</td>
+                                    {scenarios.map(s => <td key={s.name} className="py-2 px-2 text-right">{formatCurrency(s.year1Btcf)}</td>)}
+                                </tr>
+                                <tr className="border-b border-slate-100">
+                                    <td className="py-2 px-2 text-slate-600">ATCF (初年度)</td>
+                                    {scenarios.map(s => <td key={s.name} className="py-2 px-2 text-right">{formatCurrency(s.year1Atcf)}</td>)}
+                                </tr>
+                                <tr className="border-b border-slate-100 bg-blue-50/30">
+                                    <td className="py-2 px-2 text-slate-600">DSCR</td>
+                                    {scenarios.map(s => (
+                                        <td key={s.name} className={`py-2 px-2 text-right font-bold ${s.year1Dscr >= 1.2 ? 'text-emerald-600' : 'text-rose-500'}`}>
+                                            {s.year1Dscr === Infinity ? '∞' : s.year1Dscr.toFixed(2)}倍
+                                        </td>
+                                    ))}
+                                </tr>
+                                <tr className="border-b border-slate-100">
+                                    <td className="py-2 px-2 text-slate-600">IRR (税引後)</td>
+                                    {scenarios.map(s => (
+                                        <td key={s.name} className="py-2 px-2 text-right font-bold" style={{ color: s.color }}>
+                                            {s.irr !== null ? formatPercent(s.irr * 100) : 'N/A'}
+                                        </td>
+                                    ))}
+                                </tr>
+                                <tr className="bg-blue-50/30">
+                                    <td className="py-2 px-2 text-slate-600">回収期間</td>
+                                    {scenarios.map(s => (
+                                        <td key={s.name} className="py-2 px-2 text-right font-bold">
+                                            {s.paybackYear ? `${s.paybackYear}年` : '35年超'}
+                                        </td>
+                                    ))}
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </Card>
+
+                {/* Sensitivity Heatmap */}
+                <Card className="!bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200 shadow-lg">
+                    <h3 className="text-lg font-bold text-amber-800 mb-2">感度分析ヒートマップ</h3>
+                    <p className="text-xs text-amber-600 mb-3">家賃下落率 × 空室上昇率 → IRR</p>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-xs border-collapse">
+                            <thead>
+                                <tr>
+                                    <th className="py-2 px-2 text-left text-amber-700 text-[10px]">空室↓ \ 家賃→</th>
+                                    {rentDeclineHeaders.map(rd => (
+                                        <th key={rd} className="py-2 px-2 text-center text-amber-700 font-bold">{rd}%</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {sensitivityMatrix.map((row, ri) => (
+                                    <tr key={ri}>
+                                        <td className="py-1 px-2 text-amber-700 font-bold">{row[0].vacancyRise}%</td>
+                                        {row.map((cell, ci) => {
+                                            const irr = cell.irr;
+                                            const irrPct = irr !== null ? irr * 100 : -999;
+                                            let bg = '#fef2f2';
+                                            let textColor = '#dc2626';
+                                            if (irrPct > 5) { bg = '#dcfce7'; textColor = '#16a34a'; }
+                                            else if (irrPct > 3) { bg = '#d1fae5'; textColor = '#059669'; }
+                                            else if (irrPct > 1) { bg = '#fef9c3'; textColor = '#ca8a04'; }
+                                            else if (irrPct > 0) { bg = '#ffedd5'; textColor = '#ea580c'; }
+
+                                            return (
+                                                <td key={ci} className="py-1.5 px-2 text-center font-mono font-bold rounded-sm" style={{ backgroundColor: bg, color: textColor }}>
+                                                    {irr !== null ? `${irrPct.toFixed(1)}%` : 'N/A'}
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div className="flex gap-3 mt-3 text-[10px]">
+                        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded" style={{ backgroundColor: '#dcfce7' }} /> 5%以上</span>
+                        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded" style={{ backgroundColor: '#d1fae5' }} /> 3-5%</span>
+                        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded" style={{ backgroundColor: '#fef9c3' }} /> 1-3%</span>
+                        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded" style={{ backgroundColor: '#ffedd5' }} /> 0-1%</span>
+                        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded" style={{ backgroundColor: '#fef2f2' }} /> マイナス</span>
+                    </div>
+                </Card>
+            </div>
 
             <div className="flex justify-start pt-6 border-t border-slate-200 no-print">
                 <Button variant="ghost" onClick={prevStep} className="flex items-center gap-2">

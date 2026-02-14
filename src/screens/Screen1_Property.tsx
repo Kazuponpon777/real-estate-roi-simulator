@@ -5,10 +5,22 @@ import { InputGroup } from '../components/ui/InputGroup';
 import { Button } from '../components/ui/Button';
 import { ChevronRight, ArrowLeft } from 'lucide-react';
 import { TSUBO_TO_M2 } from '../utils/calculations';
+import { validateProperty, type ValidationErrors } from '../utils/validation';
 
 export const Screen1_Property: React.FC = () => {
     const { data, updateProperty, nextStep, prevStep } = useSimulationStore();
     const [activeTab, setActiveTab] = useState<'land' | 'building'>('land');
+    const [errors, setErrors] = useState<ValidationErrors>({});
+
+    const handleNext = () => {
+        const validationErrors = validateProperty(data);
+        if (Object.keys(validationErrors).length > 0) {
+            setErrors(validationErrors);
+            return;
+        }
+        setErrors({});
+        nextStep();
+    };
 
     // Simplified handler for M2/Tsubo link
     const updateLandM2 = (m2: number) => {
@@ -79,6 +91,7 @@ export const Screen1_Property: React.FC = () => {
                                         label="敷地面積 (㎡)"
                                         type="number"
                                         unit="㎡"
+                                        help="登記簿または実測による敷地の面積。建蔽率・容積率の計算基礎になります"
                                         value={data.property.landAreaM2 || ''}
                                         onChange={(e) => updateLandM2(parseFloat(e.target.value))}
                                     />
@@ -164,6 +177,7 @@ export const Screen1_Property: React.FC = () => {
                                     label="建蔽率"
                                     type="number"
                                     unit="%"
+                                    help="敷地面積に対する建築面積の割合。用途地域ごとに上限が定められています"
                                     value={data.property.coverageRate || ''}
                                     onChange={(e) => updateProperty({ coverageRate: parseFloat(e.target.value) })}
                                 />
@@ -171,6 +185,7 @@ export const Screen1_Property: React.FC = () => {
                                     label="容積率"
                                     type="number"
                                     unit="%"
+                                    help="敷地面積に対する延床面積の上限割合。建物ボリュームの上限を決めます"
                                     value={data.property.floorAreaRate || ''}
                                     onChange={(e) => updateProperty({ floorAreaRate: parseFloat(e.target.value) })}
                                 />
@@ -228,7 +243,12 @@ export const Screen1_Property: React.FC = () => {
                 <Button variant="ghost" onClick={prevStep} className="flex items-center gap-2">
                     <ArrowLeft className="h-4 w-4" /> 戻る
                 </Button>
-                <Button onClick={nextStep} className="flex items-center gap-2">
+                {Object.keys(errors).length > 0 && (
+                    <div className="px-4 py-3 bg-rose-50 border border-rose-200 rounded-lg text-sm text-rose-700">
+                        ❗ 入力内容に不足があります: {Object.values(errors).join(', ')}
+                    </div>
+                )}
+                <Button onClick={handleNext} className="flex items-center gap-2">
                     次へ <ChevronRight className="h-4 w-4" />
                 </Button>
             </div>

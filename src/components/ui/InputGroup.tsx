@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { twMerge } from 'tailwind-merge';
+import { HelpCircle } from 'lucide-react';
 
 interface InputGroupProps extends React.InputHTMLAttributes<HTMLInputElement> {
     label: string;
     unit?: string;
     error?: string;
+    help?: string; // Tooltip/help text
     className?: string;
 }
 
@@ -12,13 +14,30 @@ export const InputGroup: React.FC<InputGroupProps> = ({
     label,
     unit,
     error,
+    help,
     className,
     ...props
 }) => {
+    const [showHelp, setShowHelp] = useState(false);
+
     return (
         <div className={twMerge('flex flex-col gap-1.5', className)}>
-            <label className="text-sm font-semibold text-slate-600">
+            <label className="text-sm font-semibold text-slate-600 flex items-center gap-1.5">
                 {label}
+                {help && (
+                    <span
+                        className="relative inline-flex"
+                        onMouseEnter={() => setShowHelp(true)}
+                        onMouseLeave={() => setShowHelp(false)}
+                    >
+                        <HelpCircle className="h-3.5 w-3.5 text-slate-400 hover:text-indigo-500 cursor-help transition-colors" />
+                        {showHelp && (
+                            <span className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 text-xs font-normal text-white bg-slate-800 rounded-lg shadow-lg whitespace-nowrap max-w-[260px] text-wrap leading-relaxed animate-in fade-in">
+                                {help}
+                            </span>
+                        )}
+                    </span>
+                )}
             </label>
             <div className="relative flex items-center">
                 <input
@@ -37,7 +56,8 @@ export const InputGroup: React.FC<InputGroupProps> = ({
                     </div>
                 )}
             </div>
-            {error && <p className="text-sm text-red-500">{error}</p>}
+            {error && <p className="text-sm text-red-500 animate-pulse">{error}</p>}
         </div>
     );
 };
+
