@@ -75,5 +75,9 @@ export const DEMO_DATA: SimulationData = {
         vacancyRiseRate: 0.5,
         repairAccumulationRate: 0.0,
         interestRateRise: 0.0,
+        taxMode: 'individual',
+        otherIncome: 5_000_000, // 給与所得500万円
+        equipmentRatio: 0.2,
+        buildingAge: 0,
     }
 };

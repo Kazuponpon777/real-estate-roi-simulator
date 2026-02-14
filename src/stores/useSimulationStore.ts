@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import type { TaxMode } from '../utils/taxCalculations';
 
 // --- Types ---
 
@@ -108,6 +109,11 @@ export interface AdvancedSettings {
     vacancyRiseRate: number; // %
     repairAccumulationRate: number; // %
     interestRateRise: number; // %
+    // Tax & Depreciation
+    taxMode: TaxMode; // 'individual' | 'corporate'
+    otherIncome: number; // 他の所得 (円/年) - for individual tax bracket
+    equipmentRatio: number; // 設備比率 (0-1, e.g. 0.2 = 20%)
+    buildingAge: number; // 築年数 (中古物件用)
 }
 
 export interface SimulationData {
@@ -225,6 +231,10 @@ const INITIAL_DATA: SimulationData = {
         vacancyRiseRate: 0.5,
         repairAccumulationRate: 0.0,
         interestRateRise: 0.0,
+        taxMode: 'individual',
+        otherIncome: 0,
+        equipmentRatio: 0.2,
+        buildingAge: 0,
     },
 };
 

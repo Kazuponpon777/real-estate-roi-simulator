@@ -8,7 +8,7 @@ import { formatCurrency, formatPercent } from '../utils/formatters';
 import { downloadCSV } from '../utils/csvExport';
 import { saveProjectJSON, loadProjectJSON, importCSV } from '../utils/fileHandler';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ComposedChart, Line, AreaChart, Area, Legend, ReferenceLine } from 'recharts';
-import { calculateLongTermProjection } from '../utils/simulationProjection';
+import { calculateLongTermProjection, getInvestmentMetrics } from '../utils/simulationProjection';
 import { Slider } from '../components/ui/Slider';
 import { PrintLayout } from '../components/PrintLayout';
 
@@ -125,7 +125,10 @@ export const Screen5_Analysis: React.FC = () => {
 
     // 7. Yields
     const grossYield = totalBudgetYen > 0 ? (annualPotentialGrossIncome / totalBudgetYen) * 100 : 0;
-    const netYield = totalBudgetYen > 0 ? (noi / totalBudgetYen) * 100 : 0; // NOI Yield (Cap Rate)
+    const netYield = totalBudgetYen > 0 ? (noi / totalBudgetYen) * 100 : 0;
+
+    // Investment Metrics
+    const investmentMetrics = useMemo(() => getInvestmentMetrics(data, projectionData), [data, projectionData]);
 
 
     // --- Chart Data ---
@@ -212,6 +215,45 @@ export const Screen5_Analysis: React.FC = () => {
                         <div>
                             <p className="text-slate-500 text-sm font-bold uppercase">総事業費</p>
                             <p className="text-3xl font-bold mt-2 text-slate-800">{formatCurrency(totalBudgetYen)}</p>
+                        </div>
+                    </div>
+                </Card>
+
+                {/* Advanced Investment Metrics */}
+                <Card className="md:col-span-3 border-blue-100 !bg-gradient-to-r from-slate-50 to-blue-50/30 !bg-none shadow-lg">
+                    <h3 className="text-sm font-bold text-blue-600 uppercase tracking-wider mb-4 flex items-center gap-2">
+                        <TrendingUp className="h-4 w-4" /> 投資分析指標
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-6 text-center">
+                        <div className="bg-white rounded-xl p-4 shadow-sm border border-blue-100">
+                            <p className="text-slate-400 text-[10px] font-bold uppercase">IRR (税引後)</p>
+                            <p className="text-2xl font-extrabold mt-1 text-indigo-600">
+                                {investmentMetrics.irr !== null ? formatPercent(investmentMetrics.irr * 100) : 'N/A'}
+                            </p>
+                        </div>
+                        <div className="bg-white rounded-xl p-4 shadow-sm border border-blue-100">
+                            <p className="text-slate-400 text-[10px] font-bold uppercase">DSCR (初年度)</p>
+                            <p className={`text-2xl font-extrabold mt-1 ${investmentMetrics.year1Dscr >= 1.2 ? 'text-emerald-600' : 'text-rose-500'}`}>
+                                {investmentMetrics.year1Dscr === Infinity ? '∞' : investmentMetrics.year1Dscr.toFixed(2)}倍
+                            </p>
+                        </div>
+                        <div className="bg-white rounded-xl p-4 shadow-sm border border-blue-100">
+                            <p className="text-slate-400 text-[10px] font-bold uppercase">CCR (自己資金回収率)</p>
+                            <p className="text-2xl font-extrabold mt-1 text-blue-600">
+                                {formatPercent(investmentMetrics.year1Ccr * 100)}
+                            </p>
+                        </div>
+                        <div className="bg-white rounded-xl p-4 shadow-sm border border-blue-100">
+                            <p className="text-slate-400 text-[10px] font-bold uppercase">投資回収期間</p>
+                            <p className="text-2xl font-extrabold mt-1 text-amber-600">
+                                {investmentMetrics.paybackYear ? `${investmentMetrics.paybackYear}年` : '35年超'}
+                            </p>
+                        </div>
+                        <div className="bg-white rounded-xl p-4 shadow-sm border border-blue-100">
+                            <p className="text-slate-400 text-[10px] font-bold uppercase">BER (損益分岐稼働率)</p>
+                            <p className={`text-2xl font-extrabold mt-1 ${investmentMetrics.ber <= 0.7 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                {formatPercent(investmentMetrics.ber * 100)}
+                            </p>
                         </div>
                     </div>
                 </Card>
