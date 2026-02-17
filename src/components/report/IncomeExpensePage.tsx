@@ -30,8 +30,8 @@ export const IncomeExpensePage: React.FC<IncomeExpensePageProps> = ({ data, expe
         <div className="report-page flex flex-col">
             {/* Header */}
             <div className="flex justify-between items-end mb-6 border-b-2 border-blue-600 pb-2 flex-shrink-0">
-                <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">Financial Details</h2>
-                <p className="text-blue-400 text-[10px] uppercase tracking-widest">Page 03 — Income & Expenditure</p>
+                <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">収支詳細</h2>
+                <p className="text-blue-400 text-[10px] uppercase tracking-widest">Page 03 — 収入と支出</p>
             </div>
 
             <div className="grid grid-cols-2 gap-12 flex-1 min-h-0">
@@ -39,7 +39,7 @@ export const IncomeExpensePage: React.FC<IncomeExpensePageProps> = ({ data, expe
                 <div className="flex flex-col">
                     <h3 className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-4 flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                        Initial Investment
+                        初期投資内訳
                     </h3>
 
                     <div className="flex items-center gap-6 mb-4">
@@ -64,7 +64,7 @@ export const IncomeExpensePage: React.FC<IncomeExpensePageProps> = ({ data, expe
                     </div>
 
                     <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 flex justify-between items-center">
-                        <span className="font-bold text-blue-800 text-xs uppercase">Total Investment</span>
+                        <span className="font-bold text-blue-800 text-xs uppercase">総事業費</span>
                         <span className="font-extrabold text-blue-800 font-mono text-base">{formatCurrency(totalCost)}</span>
                     </div>
                 </div>
@@ -73,15 +73,15 @@ export const IncomeExpensePage: React.FC<IncomeExpensePageProps> = ({ data, expe
                 <div className="flex flex-col">
                     <h3 className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-4 flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                        Annual Operating Performance
+                        年間収支詳細 (満室時)
                     </h3>
 
                     {/* Income */}
                     <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-lg px-4 py-3 mb-5">
                         <div className="flex justify-between items-end">
                             <div>
-                                <p className="text-[9px] text-emerald-500 uppercase tracking-wider font-medium">Potential Gross Income (満室想定)</p>
-                                <p className="text-xs text-emerald-400 mt-0.5">Monthly: {formatCurrency(monthlyGrossRevenue)}</p>
+                                <p className="text-[9px] text-emerald-500 uppercase tracking-wider font-medium">満室想定年収 (GPI)</p>
+                                <p className="text-xs text-emerald-400 mt-0.5">月額: {formatCurrency(monthlyGrossRevenue)}</p>
                             </div>
                             <p className="text-xl font-extrabold text-emerald-700">{formatCurrency(monthlyGrossRevenue * 12)}</p>
                         </div>
@@ -110,7 +110,7 @@ export const IncomeExpensePage: React.FC<IncomeExpensePageProps> = ({ data, expe
                     </div>
 
                     <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex justify-between items-center mt-auto">
-                        <span className="font-bold text-amber-800 text-xs uppercase">Total OPEX</span>
+                        <span className="font-bold text-amber-800 text-xs uppercase">運営費合計 (OPEX)</span>
                         <span className="font-extrabold text-amber-800 font-mono text-base">
                             {formatCurrency(expenseData.reduce((acc, c) => acc + c.value, 0))}
                         </span>

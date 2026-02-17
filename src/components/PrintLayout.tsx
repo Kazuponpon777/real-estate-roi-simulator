@@ -24,7 +24,7 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ children }) => {
                 <div className="fixed inset-0 bg-slate-500/80 z-[9999] overflow-auto no-print" id="report-preview-overlay">
                     {/* Top Bar */}
                     <div className="sticky top-0 z-50 bg-slate-900 text-white px-6 py-3 flex items-center justify-between shadow-xl no-print">
-                        <span className="font-bold text-sm">PDF Report Preview (A4 Landscape)</span>
+                        <span className="font-bold text-sm">プレビュー (A4横)</span>
                         <div className="flex gap-3">
                             <button
                                 onClick={() => {

@@ -22,6 +22,7 @@ export const DEMO_DATA: SimulationData = {
         buildingAreaM2: 95.0,
         totalFloorAreaM2: 280.5,
         floorAreas: [95.0, 95.0, 90.5],
+        documents: [],
     },
     budget: {
         landPrice: 8500, // 万円

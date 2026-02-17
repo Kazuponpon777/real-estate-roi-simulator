@@ -6,6 +6,9 @@ import { Button } from '../components/ui/Button';
 import { ChevronRight, ArrowLeft } from 'lucide-react';
 import { TSUBO_TO_M2 } from '../utils/calculations';
 import { validateProperty, type ValidationErrors } from '../utils/validation';
+import { MapDisplay } from '../components/ui/MapDisplay';
+import { DocumentManager } from '../components/ui/DocumentManager';
+import type { PropertyDocument } from '../stores/useSimulationStore';
 
 export const Screen1_Property: React.FC = () => {
     const { data, updateProperty, nextStep, prevStep } = useSimulationStore();
@@ -22,9 +25,18 @@ export const Screen1_Property: React.FC = () => {
         nextStep();
     };
 
-    // Simplified handler for M2/Tsubo link
     const updateLandM2 = (m2: number) => {
         updateProperty({ landAreaM2: m2 });
+    };
+
+    const handleAddDocument = (doc: PropertyDocument) => {
+        const newDocs = [...(data.property.documents || []), doc];
+        updateProperty({ documents: newDocs });
+    };
+
+    const handleDeleteDocument = (id: string) => {
+        const newDocs = (data.property.documents || []).filter(d => d.id !== id);
+        updateProperty({ documents: newDocs });
     };
 
     return (
@@ -62,6 +74,12 @@ export const Screen1_Property: React.FC = () => {
                                 onChange={(e) => updateProperty({ address: e.target.value })}
                                 className="md:col-span-2"
                             />
+
+                            <div className="md:col-span-2">
+                                <label className="text-sm font-semibold text-slate-600 block mb-2">地図確認</label>
+                                <MapDisplay address={data.property.address} />
+                            </div>
+
 
                             <div className="md:col-span-2 grid md:grid-cols-2 gap-6 p-4 bg-slate-50 rounded-xl border border-slate-100">
                                 <div className="space-y-4">
@@ -190,6 +208,14 @@ export const Screen1_Property: React.FC = () => {
                                     onChange={(e) => updateProperty({ floorAreaRate: parseFloat(e.target.value) })}
                                 />
                             </div>
+                        </div>
+
+                        <div className="border-t border-slate-100 pt-6 mt-6">
+                            <DocumentManager
+                                documents={data.property.documents || []}
+                                onAdd={handleAddDocument}
+                                onDelete={handleDeleteDocument}
+                            />
                         </div>
                     </Card>
                 ) : (

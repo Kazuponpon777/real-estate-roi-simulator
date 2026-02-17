@@ -11,13 +11,13 @@ export const ChartPage: React.FC<ChartPageProps> = ({ projectionData }) => {
         <div className="report-page flex flex-col">
             {/* Header */}
             <div className="flex justify-between items-end mb-5 border-b-2 border-blue-600 pb-2 flex-shrink-0">
-                <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">Long-term Simulation</h2>
-                <p className="text-blue-400 text-[10px] uppercase tracking-widest">Page 04 — 35 Year Projection</p>
+                <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">長期収支シミュレーション</h2>
+                <p className="text-blue-400 text-[10px] uppercase tracking-widest">Page 04 — 35年推移</p>
             </div>
 
             {/* Main Chart */}
             <div className="flex-1 min-h-0 flex flex-col mb-4">
-                <p className="text-[9px] font-bold text-blue-500 uppercase tracking-wider mb-2">Revenue vs Debt Service (年間収支推移)</p>
+                <p className="text-[9px] font-bold text-blue-500 uppercase tracking-wider mb-2">収支と返済の推移</p>
                 <div className="flex-1 min-h-0 bg-blue-50/30 rounded-lg border border-blue-100 p-2">
                     <ResponsiveContainer width="100%" height="100%">
                         <ComposedChart data={projectionData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
@@ -37,7 +37,7 @@ export const ChartPage: React.FC<ChartPageProps> = ({ projectionData }) => {
             {/* Sub Charts */}
             <div className="h-32 grid grid-cols-2 gap-4 flex-shrink-0">
                 <div className="rounded-lg border border-emerald-100 bg-emerald-50/30 p-3 flex flex-col">
-                    <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-wider mb-1">Accumulated Cashflow (累積CF)</p>
+                    <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-wider mb-1">累積キャッシュフロー</p>
                     <div className="flex-1 min-h-0">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={projectionData}>
@@ -51,7 +51,7 @@ export const ChartPage: React.FC<ChartPageProps> = ({ projectionData }) => {
                     </div>
                 </div>
                 <div className="rounded-lg border border-violet-100 bg-violet-50/30 p-3 flex flex-col">
-                    <p className="text-[9px] font-bold text-violet-500 uppercase tracking-wider mb-1">Loan Balance (残債推移)</p>
+                    <p className="text-[9px] font-bold text-violet-500 uppercase tracking-wider mb-1">ローン残債推移</p>
                     <div className="flex-1 min-h-0">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={projectionData}>

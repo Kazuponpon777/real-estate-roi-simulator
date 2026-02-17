@@ -18,7 +18,7 @@ export const ReportCover: React.FC<ReportCoverProps> = ({ data }) => {
                         <span className="text-lg font-bold">R</span>
                     </div>
                     <p className="text-white/70 tracking-[0.15em] text-[10px] uppercase leading-relaxed mt-2">
-                        Real Estate<br />Investment Analysis
+                        不動産投資<br />収支シミュレーション
                     </p>
                 </div>
 
@@ -35,7 +35,7 @@ export const ReportCover: React.FC<ReportCoverProps> = ({ data }) => {
 
                 {/* Footer */}
                 <div className="relative z-10">
-                    <p className="text-white/40 text-[9px] tracking-wider uppercase">Financial Report</p>
+                    <p className="text-white/40 text-[9px] tracking-wider uppercase">収支計画書</p>
                 </div>
 
                 {/* Decorative */}
@@ -47,33 +47,33 @@ export const ReportCover: React.FC<ReportCoverProps> = ({ data }) => {
             <div className="flex-1 flex flex-col justify-between p-12 pl-16">
                 {/* Date */}
                 <div className="text-right">
-                    <p className="text-blue-400 text-[10px] uppercase tracking-widest">Date of Issue</p>
+                    <p className="text-blue-400 text-[10px] uppercase tracking-widest">発行日</p>
                     <p className="text-slate-600 text-sm font-medium">{today}</p>
                 </div>
 
                 {/* Main Content */}
                 <div>
-                    <p className="text-blue-600 font-bold text-[10px] uppercase tracking-[0.2em] mb-3">Project Title</p>
+                    <p className="text-blue-600 font-bold text-[10px] uppercase tracking-[0.2em] mb-3">プロジェクト名</p>
                     <h2 className="text-4xl font-extrabold text-slate-800 leading-tight mb-8">
-                        {data.title || 'Untitled Project'}
+                        {data.title || '無題プロジェクト'}
                     </h2>
                     <div className="w-full h-px bg-gradient-to-r from-blue-200 via-indigo-200 to-transparent mb-8"></div>
 
                     <div className="grid grid-cols-2 gap-8">
                         <div>
-                            <p className="text-[9px] font-bold text-blue-400 uppercase tracking-wider mb-1">Property Address</p>
+                            <p className="text-[9px] font-bold text-blue-400 uppercase tracking-wider mb-1">物件住所</p>
                             <p className="text-base text-slate-700 font-medium">{data.property.address || '未設定'}</p>
                         </div>
                         <div>
-                            <p className="text-[9px] font-bold text-blue-400 uppercase tracking-wider mb-1">Structure</p>
+                            <p className="text-[9px] font-bold text-blue-400 uppercase tracking-wider mb-1">構造 / 総戸数</p>
                             <p className="text-base text-slate-700 font-medium">{data.property.structure}造 ／ {data.property.totalUnits}戸</p>
                         </div>
                         <div>
-                            <p className="text-[9px] font-bold text-blue-400 uppercase tracking-wider mb-1">Land Area</p>
+                            <p className="text-[9px] font-bold text-blue-400 uppercase tracking-wider mb-1">敷地面積</p>
                             <p className="text-base text-slate-700 font-medium">{data.property.landAreaM2} ㎡</p>
                         </div>
                         <div>
-                            <p className="text-[9px] font-bold text-blue-400 uppercase tracking-wider mb-1">Total Floor Area</p>
+                            <p className="text-[9px] font-bold text-blue-400 uppercase tracking-wider mb-1">延床面積</p>
                             <p className="text-base text-slate-700 font-medium">{data.property.totalFloorAreaM2} ㎡</p>
                         </div>
                     </div>
@@ -81,7 +81,7 @@ export const ReportCover: React.FC<ReportCoverProps> = ({ data }) => {
 
                 {/* Bottom */}
                 <div className="text-right">
-                    <p className="text-slate-300 text-[9px] tracking-widest uppercase">Confidential — For Simulation Purpose Only</p>
+                    <p className="text-slate-300 text-[9px] tracking-widest uppercase">シミュレーション目的であり、実際の結果を保証するものではありません</p>
                 </div>
             </div>
         </div>

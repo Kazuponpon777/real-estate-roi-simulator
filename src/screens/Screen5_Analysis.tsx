@@ -21,6 +21,7 @@ import { ExecutiveSummaryPage } from '../components/report/ExecutiveSummaryPage'
 import { IncomeExpensePage } from '../components/report/IncomeExpensePage';
 import { ChartPage } from '../components/report/ChartPage';
 import { CashFlowPage } from '../components/report/CashFlowPage';
+import { AppendicesPage } from '../components/report/AppendicesPage';
 
 export const Screen5_Analysis: React.FC = () => {
     const { data, updateData, updateAdvancedSettings, prevStep } = useSimulationStore();
@@ -172,7 +173,7 @@ export const Screen5_Analysis: React.FC = () => {
     return (
         <div className="max-w-6xl mx-auto space-y-8 animate-in pb-20">
             <div className="flex items-center justify-between no-print">
-                <h2 className="text-2xl font-bold text-slate-800">収支分析結果 (Analysis)</h2>
+                <h2 className="text-2xl font-bold text-slate-800">収支分析結果</h2>
                 <div className="flex gap-2">
                     <PrintLayout>
                         {/* Page 1: Cover */}
@@ -187,6 +188,8 @@ export const Screen5_Analysis: React.FC = () => {
                         <CashFlowPage projection={projectionData} startYear={1} endYear={20} pageNumber={5} />
                         {/* Page 6: Cash Flow (21-35 years) */}
                         <CashFlowPage projection={projectionData} startYear={21} endYear={35} pageNumber={6} />
+                        {/* Page 7: Appendices (Map & Documents) */}
+                        <AppendicesPage data={data} pageNumber={7} />
                     </PrintLayout>
                 </div>
             </div>

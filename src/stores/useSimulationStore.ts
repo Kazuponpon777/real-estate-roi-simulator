@@ -6,6 +6,13 @@ import type { TaxMode } from '../utils/taxCalculations';
 
 export type SimulationMode = 'land_new' | 'investment_used';
 
+export interface PropertyDocument {
+    id: string;
+    name: string;
+    type: string;
+    size: number;
+}
+
 export interface PropertyDetails {
     // Site
     address: string;
@@ -20,6 +27,8 @@ export interface PropertyDetails {
     roadWidth1: number; // m
     roadType1: string; // 県道/市道 etc
     roadDirection1: string;
+
+    documents: PropertyDocument[];
 
     urbanizationArea: 'urbanization' | 'adjustment'; // 市街化 / 調整
     zoning: string; // 用途地域
@@ -177,6 +186,7 @@ const INITIAL_DATA: SimulationData = {
         buildingAreaM2: 0,
         totalFloorAreaM2: 0,
         floorAreas: [0, 0, 0],
+        documents: [],
     },
 
     budget: {
