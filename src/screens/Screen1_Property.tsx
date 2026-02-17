@@ -215,7 +215,34 @@ export const Screen1_Property: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="border-t border-slate-100 pt-6 mt-6">
+                        <div className="border-t border-slate-100 pt-6 mt-6 space-y-6">
+                            {/* Cloud Storage Link */}
+                            <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                                <label className="text-sm font-bold text-slate-700 block mb-2">クラウドストレージ連携 (Google Drive / OneDrive)</label>
+                                <p className="text-xs text-slate-500 mb-3">
+                                    元データ（公図・謄本など）が保存されているクラウドフォルダの共有リンクをここに貼り付けておくと、後からすぐにアクセスできます。
+                                </p>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="url"
+                                        placeholder="例: https://drive.google.com/drive/folders/..."
+                                        className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                        value={data.property.cloudFolderUrl || ''}
+                                        onChange={(e) => updateProperty({ cloudFolderUrl: e.target.value })}
+                                    />
+                                    {data.property.cloudFolderUrl && (
+                                        <a
+                                            href={data.property.cloudFolderUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+                                        >
+                                            開く
+                                        </a>
+                                    )}
+                                </div>
+                            </div>
+
                             <DocumentManager
                                 documents={data.property.documents || []}
                                 onAdd={handleAddDocument}

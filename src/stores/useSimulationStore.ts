@@ -33,6 +33,7 @@ export interface PropertyDetails {
     roadDirection1: string;
 
     documents: PropertyDocument[];
+    cloudFolderUrl?: string;
 
     urbanizationArea: 'urbanization' | 'adjustment'; // 市街化 / 調整
     zoning: string; // 用途地域
