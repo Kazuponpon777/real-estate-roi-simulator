@@ -23,6 +23,8 @@ export const DEMO_DATA: SimulationData = {
         totalFloorAreaM2: 280.5,
         floorAreas: [95.0, 95.0, 90.5],
         documents: [],
+        latitude: null,
+        longitude: null,
     },
     budget: {
         landPrice: 8500, // 万円

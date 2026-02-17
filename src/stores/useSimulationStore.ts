@@ -22,6 +22,10 @@ export interface PropertyDetails {
     // Alternatively, store both or just one. Let's store M2.
     landAreaM2: number;
 
+    // Use null for uninitialized
+    latitude: number | null;
+    longitude: number | null;
+
     frontage: number; // m
     depth: number; // m
     roadWidth1: number; // m
@@ -172,6 +176,8 @@ const INITIAL_DATA: SimulationData = {
         landAreaMode: 'public',
         landAreaPublic: 0,
         landAreaM2: 0,
+        latitude: null,
+        longitude: null,
         frontage: 0,
         depth: 0,
         roadWidth1: 6,

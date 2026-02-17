@@ -77,7 +77,12 @@ export const Screen1_Property: React.FC = () => {
 
                             <div className="md:col-span-2">
                                 <label className="text-sm font-semibold text-slate-600 block mb-2">地図確認</label>
-                                <MapDisplay address={data.property.address} />
+                                <MapDisplay
+                                    address={data.property.address}
+                                    latitude={data.property.latitude}
+                                    longitude={data.property.longitude}
+                                    onLocationChange={(lat, lon) => updateProperty({ latitude: lat, longitude: lon })}
+                                />
                             </div>
 
 
