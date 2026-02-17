@@ -1,22 +1,22 @@
 
 import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
+// import L from 'leaflet';
 import { searchAddress } from '../../utils/geocoding';
 
 // Fix for default marker icon in React Leaflet
-import icon from 'leaflet/dist/images/marker-icon.png';
-import iconShadow from 'leaflet/dist/images/marker-shadow.png';
-
-let DefaultIcon = L.icon({
-    iconUrl: icon,
-    shadowUrl: iconShadow,
-    iconSize: [25, 41],
-    iconAnchor: [12, 41]
-});
-
-L.Marker.prototype.options.icon = DefaultIcon;
+// import icon from 'leaflet/dist/images/marker-icon.png';
+// import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+// 
+// let DefaultIcon = L.icon({
+//     iconUrl: icon,
+//     shadowUrl: iconShadow,
+//     iconSize: [25, 41],
+//     iconAnchor: [12, 41]
+// });
+// 
+// L.Marker.prototype.options.icon = DefaultIcon;
 
 interface MapDisplayProps {
     address: string;
@@ -71,11 +71,32 @@ export const MapDisplay: React.FC<MapDisplayProps> = ({ address, className }) =>
                 />
                 {coords && (
                     <>
-                        <Marker position={[coords.lat, coords.lon]}>
+                        {/* Target Area Circle */}
+                        <CircleMarker
+                            center={[coords.lat, coords.lon]}
+                            radius={20}
+                            pathOptions={{
+                                color: '#ef4444',
+                                fillColor: '#ef4444',
+                                fillOpacity: 0.4,
+                                weight: 2
+                            }}
+                        />
+                        {/* Center Point */}
+                        <CircleMarker
+                            center={[coords.lat, coords.lon]}
+                            radius={4}
+                            pathOptions={{
+                                color: '#ffffff',
+                                fillColor: '#ef4444',
+                                fillOpacity: 1,
+                                weight: 1.5
+                            }}
+                        >
                             <Popup>
                                 {address}
                             </Popup>
-                        </Marker>
+                        </CircleMarker>
                         <RecenterMap lat={coords.lat} lon={coords.lon} />
                     </>
                 )}
