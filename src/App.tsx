@@ -36,7 +36,7 @@ function App() {
                 </div>
 
                 <div className="text-sm font-medium text-slate-500">
-                    v1.1 (Revised)
+                    v1.3 (Re-deploy)
                 </div>
             </header>
 

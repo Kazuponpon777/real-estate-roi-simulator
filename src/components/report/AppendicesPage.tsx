@@ -150,7 +150,7 @@ export const AppendicesPage: React.FC<AppendicesPageProps> = ({ data, pageNumber
             {/* Footer */}
             <div className="mt-8 pt-4 border-t border-slate-200 flex justify-between items-center text-[10px] text-slate-400">
                 <span>不動産収支シミュレーション</span>
-                <span>© 2026 Yashima Co., Ltd.</span>
+                <span>© 2026 Yashima Co., Ltd. (v1.3)</span>
             </div>
         </div>
     );

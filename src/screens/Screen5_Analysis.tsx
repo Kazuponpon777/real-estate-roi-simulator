@@ -649,6 +649,7 @@ export const Screen5_Analysis: React.FC = () => {
                     <li>税金や諸経費は一般的な税率や評価額をもとにした概算です。正確な数値については税理士等の専門家へご確認下さい。</li>
                     <li>事業開始後における地価や建築費、金利の変動、賃料や修繕費用の変化を完全に予想したものではありません。</li>
                 </ul>
+                <div className="text-[10px] text-slate-300 text-right mt-2">v1.3</div>
             </div>
 
 
