@@ -75,6 +75,7 @@ export const calculateLongTermProjection = (data: SimulationData, years: number 
     const annualPotentialGrossIncome =
         ((data.rentRoll.roomTypes.reduce((acc, r) => acc + (r.rent + r.commonFee) * r.count, 0) +
             (data.rentRoll.parkingCount * data.rentRoll.parkingFee) +
+            (data.rentRoll.solarPowerIncome || 0) +
             data.rentRoll.otherRevenue) * 12);
 
     // --- Fixed OPEX ---

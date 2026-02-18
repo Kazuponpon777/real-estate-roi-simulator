@@ -80,7 +80,7 @@ export const Screen5_Analysis: React.FC = () => {
     const totalMonthlyRent = data.rentRoll.roomTypes.reduce((acc, r) => acc + (r.rent + r.commonFee) * r.count, 0);
     const totalMonthlyParking = data.rentRoll.parkingCount * data.rentRoll.parkingFee;
     const monthlyGrossIncome = totalMonthlyRent + totalMonthlyParking; // Assuming 100% occupancy for Potential Gross
-    const annualPotentialGrossIncome = (monthlyGrossIncome + data.rentRoll.otherRevenue) * 12;
+    const annualPotentialGrossIncome = (monthlyGrossIncome + data.rentRoll.otherRevenue + (data.rentRoll.solarPowerIncome || 0)) * 12;
 
     // Effective Gross Income (EGI)
     const vacancyLoss = annualPotentialGrossIncome * (data.rentRoll.occupancyRate ? (100 - data.rentRoll.occupancyRate) / 100 : 0.05);
@@ -639,6 +639,16 @@ export const Screen5_Analysis: React.FC = () => {
                 <Button variant="ghost" onClick={prevStep} className="flex items-center gap-2">
                     <ArrowLeft className="h-4 w-4" /> 戻る (条件変更)
                 </Button>
+            </div>
+
+            {/* Disclaimer for Screen View */}
+            <div className="mt-8 p-4 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-500 space-y-1">
+                <p className="font-bold">【 免責事項・ご注意 】</p>
+                <ul className="list-disc list-inside space-y-0.5 ml-1">
+                    <li>本シミュレーション結果はあくまでも概算の提案であり、将来の収益を保証するものではありません。</li>
+                    <li>税金や諸経費は一般的な税率や評価額をもとにした概算です。正確な数値については税理士等の専門家へご確認下さい。</li>
+                    <li>事業開始後における地価や建築費、金利の変動、賃料や修繕費用の変化を完全に予想したものではありません。</li>
+                </ul>
             </div>
 
 

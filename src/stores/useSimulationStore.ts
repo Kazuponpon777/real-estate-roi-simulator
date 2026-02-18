@@ -92,6 +92,7 @@ export interface RentRoll {
     roomTypes: RoomType[];
     parkingCount: number;
     parkingFee: number; // 円
+    solarPowerIncome: number; // 太陽光売電収入 (円/月)
     otherRevenue: number; // 円
 
     // Ratios / Conditions
@@ -225,6 +226,7 @@ const INITIAL_DATA: SimulationData = {
         ],
         parkingCount: 0,
         parkingFee: 0,
+        solarPowerIncome: 0,
         otherRevenue: 0,
         occupancyRate: 95,
         securityDepositMonth: 1,

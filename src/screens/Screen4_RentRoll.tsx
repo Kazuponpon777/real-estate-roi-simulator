@@ -36,10 +36,10 @@ export const Screen4_RentRoll: React.FC = () => {
     // Calculations
     const totalMonthlyRent = data.rentRoll.roomTypes.reduce((acc, r) => acc + (r.rent + r.commonFee) * r.count, 0);
     const totalMonthlyParking = data.rentRoll.parkingCount * data.rentRoll.parkingFee;
-    const grossMonthlyIncome = totalMonthlyRent + totalMonthlyParking; // Other revenue is usually annual or monthly? Let's assume store is Monthly otherRevenue for simplicity? Or input is asking "Conditions".
-    // Req says "Others Revenue Condition". Let's assume it's included roughly.
+    const grossMonthlyIncome = totalMonthlyRent + totalMonthlyParking;
 
-    const annualPotentialGrossIncome = (grossMonthlyIncome + data.rentRoll.otherRevenue) * 12;
+    // Req says "Others Revenue Condition". Let's assume it's included roughly.
+    const annualPotentialGrossIncome = (grossMonthlyIncome + data.rentRoll.otherRevenue + (data.rentRoll.solarPowerIncome || 0)) * 12;
 
     return (
         <div className="max-w-4xl mx-auto space-y-8 animate-in pb-20">
@@ -143,6 +143,13 @@ export const Screen4_RentRoll: React.FC = () => {
                             unit="円"
                             value={data.rentRoll.otherRevenue || ''}
                             onChange={(e) => updateRentRoll({ otherRevenue: parseFloat(e.target.value) })}
+                        />
+                        <InputGroup
+                            label="太陽光売電収入(月額)"
+                            type="number"
+                            unit="円"
+                            value={data.rentRoll.solarPowerIncome || ''}
+                            onChange={(e) => updateRentRoll({ solarPowerIncome: parseFloat(e.target.value) })}
                         />
                         <InputGroup
                             label="想定空室率"
@@ -260,7 +267,7 @@ export const Screen4_RentRoll: React.FC = () => {
                     <span className="text-indigo-100 text-sm uppercase tracking-wider font-bold">年間満室想定収入 (Gross Potential Income)</span>
                     <div className="text-3xl font-bold mt-1">{formatManYen(annualPotentialGrossIncome / 10000)} 万円</div>
                     <p className="text-sm text-indigo-200 mt-2">
-                        月額: {(grossMonthlyIncome + data.rentRoll.otherRevenue).toLocaleString()} 円 × 12ヶ月
+                        月額: {(grossMonthlyIncome + data.rentRoll.otherRevenue + (data.rentRoll.solarPowerIncome || 0)).toLocaleString()} 円 × 12ヶ月
                     </p>
                 </div>
             </div>

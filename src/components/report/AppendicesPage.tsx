@@ -136,8 +136,19 @@ export const AppendicesPage: React.FC<AppendicesPageProps> = ({ data, pageNumber
                 )}
             </div>
 
+            {/* Disclaimer Section */}
+            <div className="mt-8 pt-6 border-t border-slate-200">
+                <h3 className="text-sm font-bold text-slate-700 mb-2">【免責事項・ご注意】</h3>
+                <ul className="text-xs text-slate-500 list-disc list-inside space-y-1">
+                    <li>本シミュレーション結果はあくまでも概算の提案であり、将来の収益を保証するものではありません。</li>
+                    <li>税金や諸経費は一般的な税率や評価額をもとにした概算です。正確な数値については税理士等の専門家へご確認下さい。</li>
+                    <li>事業開始後における地価や建築費、金利の変動、賃料や修繕費用の変化を完全に予想したものではありません。</li>
+                    <li>本資料の著作権は八洲建設株式会社に帰属します。無断での複製・転載を禁じます。</li>
+                </ul>
+            </div>
+
             {/* Footer */}
-            <div className="mt-auto pt-4 border-t border-slate-200 flex justify-between items-center text-[10px] text-slate-400">
+            <div className="mt-8 pt-4 border-t border-slate-200 flex justify-between items-center text-[10px] text-slate-400">
                 <span>不動産収支シミュレーション</span>
                 <span>© 2026 Yashima Co., Ltd.</span>
             </div>

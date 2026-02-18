@@ -13,17 +13,19 @@ export const IncomeExpensePage: React.FC<IncomeExpensePageProps> = ({ data, expe
 
     const totalMonthlyRent = data.rentRoll.roomTypes.reduce((acc, r) => acc + (r.rent + r.commonFee) * r.count, 0);
     const totalMonthlyParking = data.rentRoll.parkingCount * data.rentRoll.parkingFee;
-    const monthlyGrossRevenue = totalMonthlyRent + totalMonthlyParking;
+    const monthlyGrossRevenue = totalMonthlyRent + totalMonthlyParking + (data.rentRoll.solarPowerIncome || 0) + data.rentRoll.otherRevenue;
 
     const landCost = data.budget.landPrice * 10000;
     const buildingCost = (data.budget.demolitionCost + data.budget.buildingWorksCost) * 10000;
-    const initialCost = (data.budget.stampDuty + data.budget.registrationTax + data.budget.acquisitionTax + data.budget.fireInsurancePrepaid + data.budget.waterContribution + data.budget.brokerageFee + data.budget.otherInitialCost + data.budget.constructionInterest) * 10000;
-    const totalCost = landCost + buildingCost + initialCost;
+    const brokerageCost = data.budget.brokerageFee * 10000;
+    const otherInitialCost = (data.budget.stampDuty + data.budget.registrationTax + data.budget.acquisitionTax + data.budget.fireInsurancePrepaid + data.budget.waterContribution + data.budget.otherInitialCost + data.budget.constructionInterest) * 10000;
+    const totalCost = landCost + buildingCost + brokerageCost + otherInitialCost;
 
     const budgetData = [
         { name: '土地', value: landCost },
         { name: '建物', value: buildingCost },
-        { name: '諸経費', value: initialCost },
+        { name: '仲介手数料', value: brokerageCost },
+        { name: 'その他諸経費', value: otherInitialCost },
     ].filter(d => d.value > 0);
 
     return (
