@@ -96,7 +96,7 @@ export const Screen2_Budget: React.FC = () => {
             <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-slate-800">事業予算・建築費 (Project Budget)</h2>
                 <Button variant="secondary" size="sm" onClick={calculateBrokerageEstimate} className="flex items-center gap-2">
-                    <RefreshCw className="h-4 w-4" /> 仲介概算を計算
+                    <RefreshCw className="h-4 w-4" /> 諸経費概算計算
                 </Button>
             </div>
 
