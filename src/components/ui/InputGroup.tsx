@@ -25,6 +25,35 @@ export const InputGroup: React.FC<InputGroupProps> = ({
     ...props
 }) => {
     const [showHelp, setShowHelp] = useState(false);
+    const [isFocused, setIsFocused] = useState(false);
+
+    const displayValue = React.useMemo(() => {
+        if (props.value === '' || props.value === undefined || props.value === null) return '';
+        if (isFocused || props.type !== 'number') return props.value;
+
+        const numStr = String(props.value);
+        const parts = numStr.split('.');
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        return parts.join('.');
+    }, [props.value, isFocused, props.type]);
+
+    const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+        setIsFocused(true);
+        props.onFocus?.(e);
+    };
+
+    const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+        setIsFocused(false);
+        props.onBlur?.(e);
+    };
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (props.type === 'number') {
+            // Remove commas before passing to parent
+            e.target.value = e.target.value.replace(/,/g, '');
+        }
+        props.onChange?.(e);
+    };
 
     return (
         <div className={twMerge('flex flex-col gap-1.5 w-full', className)}>
@@ -60,6 +89,13 @@ export const InputGroup: React.FC<InputGroupProps> = ({
             </label>
             <div className="relative flex items-stretch w-full">
                 <input
+                    {...props}
+                    type={props.type === 'number' ? 'text' : props.type}
+                    inputMode={props.type === 'number' ? 'numeric' : props.inputMode}
+                    value={displayValue}
+                    onChange={handleChange}
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
                     className={twMerge(
                         'flex-1 min-w-0 w-full glass-input rounded-lg px-3 py-2.5 text-base text-slate-900 shadow-sm',
                         'focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20',
@@ -68,7 +104,6 @@ export const InputGroup: React.FC<InputGroupProps> = ({
                         unit ? '!rounded-r-none !border-r-0' : '',
                         error ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-500/20' : ''
                     )}
-                    {...props}
                 />
                 {unit && (
                     <div className="flex shrink-0 select-none items-center justify-center rounded-r-lg border border-l-0 border-slate-300 bg-slate-50/50 px-3 text-sm font-medium text-slate-500 whitespace-nowrap min-w-max">
