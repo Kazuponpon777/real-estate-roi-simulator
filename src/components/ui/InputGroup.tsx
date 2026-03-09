@@ -8,6 +8,9 @@ interface InputGroupProps extends React.InputHTMLAttributes<HTMLInputElement> {
     error?: string;
     help?: string; // Tooltip/help text
     className?: string;
+    actionIcon?: React.ReactNode;
+    onAction?: () => void;
+    actionTooltip?: string;
 }
 
 export const InputGroup: React.FC<InputGroupProps> = ({
@@ -16,42 +19,59 @@ export const InputGroup: React.FC<InputGroupProps> = ({
     error,
     help,
     className,
+    actionIcon,
+    onAction,
+    actionTooltip,
     ...props
 }) => {
     const [showHelp, setShowHelp] = useState(false);
 
     return (
-        <div className={twMerge('flex flex-col gap-1.5', className)}>
-            <label className="text-sm font-semibold text-slate-600 flex items-center gap-1.5">
-                {label}
-                {help && (
-                    <span
-                        className="relative inline-flex"
-                        onMouseEnter={() => setShowHelp(true)}
-                        onMouseLeave={() => setShowHelp(false)}
+        <div className={twMerge('flex flex-col gap-1.5 w-full', className)}>
+            <label className="text-sm font-semibold text-slate-600 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                    {label}
+                    {help && (
+                        <span
+                            className="relative inline-flex"
+                            onMouseEnter={() => setShowHelp(true)}
+                            onMouseLeave={() => setShowHelp(false)}
+                        >
+                            <HelpCircle className="h-3.5 w-3.5 text-slate-400 hover:text-indigo-500 cursor-help transition-colors" />
+                            {showHelp && (
+                                <span className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 text-xs font-normal text-white bg-slate-800 rounded-lg shadow-lg whitespace-nowrap max-w-[260px] text-wrap leading-relaxed animate-in fade-in">
+                                    {help}
+                                </span>
+                            )}
+                        </span>
+                    )}
+                </span>
+                {actionIcon && (
+                    <button
+                        type="button"
+                        className="text-indigo-400 hover:text-indigo-600 transition-colors p-0.5 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                        title={actionTooltip}
+                        onClick={onAction}
+                        tabIndex={-1}
                     >
-                        <HelpCircle className="h-3.5 w-3.5 text-slate-400 hover:text-indigo-500 cursor-help transition-colors" />
-                        {showHelp && (
-                            <span className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 text-xs font-normal text-white bg-slate-800 rounded-lg shadow-lg whitespace-nowrap max-w-[260px] text-wrap leading-relaxed animate-in fade-in">
-                                {help}
-                            </span>
-                        )}
-                    </span>
+                        {actionIcon}
+                    </button>
                 )}
             </label>
-            <div className="relative flex items-center">
+            <div className="relative flex items-stretch w-full">
                 <input
                     className={twMerge(
-                        'flex-1 glass-input rounded-lg px-4 py-2.5 text-base text-slate-900 shadow-sm',
+                        'flex-1 min-w-0 w-full glass-input rounded-lg px-3 py-2.5 text-base text-slate-900 shadow-sm',
                         'focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20',
                         'disabled:bg-slate-50/50 disabled:text-slate-500',
-                        unit ? 'rounded-r-none border-r-0' : '',
+                        '[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none',
+                        unit ? '!rounded-r-none !border-r-0' : '',
                         error ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-500/20' : ''
                     )}
                     {...props}
                 />
                 {unit && (
-                    <div className="flex select-none items-center justify-center rounded-r-lg border border-l-0 border-slate-300 bg-slate-50/50 px-3 text-sm font-medium text-slate-500">
+                    <div className="flex shrink-0 select-none items-center justify-center rounded-r-lg border border-l-0 border-slate-300 bg-slate-50/50 px-3 text-sm font-medium text-slate-500 whitespace-nowrap min-w-max">
                         {unit}
                     </div>
                 )}

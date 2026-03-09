@@ -11,41 +11,70 @@ export const Screen2_Budget: React.FC = () => {
     const { data, updateBudget, nextStep, prevStep } = useSimulationStore();
     const isLandMode = data.mode === 'land_new';
 
-    // Auto-calculate initial expenses if they are 0 (first time)
-    // Simple heuristics for taxes based on Land Price / Building Cost
-    // Note: True calculation needs Tax Evaluation Value (Fixed Asset Value), not Market Price.
-    // We use valid approximation ratios: e.g. Tax Value ~= 70% of Market Price for Land, 50-60% for Building.
+    React.useEffect(() => {
+        const landPrice = (data.budget.landPrice || 0) * 10000;
+        const buildingCost = (data.budget.buildingWorksCost || 0) * 10000;
 
-    const calculateEstimates = () => {
-        const landPrice = data.budget.landPrice * 10000; // Yen
-        const buildingCost = data.budget.buildingWorksCost * 10000; // Yen
+        const newUpdates: Partial<typeof data.budget> = {};
+
+        // 1. Stamp Duty
+        if (data.budget.isAutoStampDuty) {
+            let stamp = 1;
+            const total = landPrice + (isLandMode ? buildingCost : 0);
+            if (total > 100000000) stamp = 6;
+            else if (total > 50000000) stamp = 3;
+            else if (total > 10000000) stamp = 1;
+            else if (total > 5000000) stamp = 0.5;
+            else stamp = 0; // Less than 5M, or 0
+
+            if (data.budget.stampDuty !== stamp) newUpdates.stampDuty = stamp;
+        }
 
         // Estimates
         const estLandTaxValue = landPrice * 0.7;
-        const estBuildingTaxValue = buildingCost * 0.5; // New construction building value is usually lower than cost
+        const estBuildingTaxValue = buildingCost * 0.5;
 
-        // Registration Tax
-        const regLand = estLandTaxValue * TAX_RATES.REGISTRATION_LICENSE.LAND_OWNERSHIP_TRANSFER;
-        // Building Preservation (New) or Transfer (Used)
-        const regBuilding = isLandMode
-            ? estBuildingTaxValue * TAX_RATES.REGISTRATION_LICENSE.BUILDING_PRESERVATION
-            : estBuildingTaxValue * TAX_RATES.REGISTRATION_LICENSE.LAND_OWNERSHIP_TRANSFER; // Used building transfer usually higher rate
+        // 2. Registration Tax
+        if (data.budget.isAutoRegistrationTax) {
+            const regLand = estLandTaxValue * TAX_RATES.REGISTRATION_LICENSE.LAND_OWNERSHIP_TRANSFER;
+            const regBuilding = isLandMode
+                ? estBuildingTaxValue * TAX_RATES.REGISTRATION_LICENSE.BUILDING_PRESERVATION
+                : estBuildingTaxValue * TAX_RATES.REGISTRATION_LICENSE.LAND_OWNERSHIP_TRANSFER;
+            const regTotalMan = Math.round((regLand + regBuilding) / 10000);
 
-        // Acquisition Tax
-        const acqLand = (estLandTaxValue - (isLandMode ? 12000000 : 0)) * TAX_RATES.REAL_ESTATE_ACQUISITION.LAND; // Simplified reduction
-        const acqBuilding = estBuildingTaxValue * TAX_RATES.REAL_ESTATE_ACQUISITION.BUILDING;
+            if (data.budget.registrationTax !== regTotalMan) newUpdates.registrationTax = regTotalMan;
+        }
 
-        // Brokerage Fee (Land only for New, Total for Used)
+        // 3. Acquisition Tax
+        if (data.budget.isAutoAcquisitionTax) {
+            const acqLand = Math.max(0, (estLandTaxValue - (isLandMode ? 12000000 : 0)) * TAX_RATES.REAL_ESTATE_ACQUISITION.LAND);
+            const acqBuilding = estBuildingTaxValue * TAX_RATES.REAL_ESTATE_ACQUISITION.BUILDING;
+            const acqTotalMan = Math.max(0, Math.round((acqLand + acqBuilding) / 10000));
+
+            if (data.budget.acquisitionTax !== acqTotalMan) newUpdates.acquisitionTax = acqTotalMan;
+        }
+
+        if (Object.keys(newUpdates).length > 0) {
+            updateBudget(newUpdates);
+        }
+    }, [
+        data.budget.landPrice,
+        data.budget.buildingWorksCost,
+        data.budget.isAutoStampDuty,
+        data.budget.isAutoRegistrationTax,
+        data.budget.isAutoAcquisitionTax,
+        isLandMode,
+        updateBudget
+    ]);
+
+    const calculateBrokerageEstimate = () => {
+        const landPrice = (data.budget.landPrice || 0) * 10000;
+        const buildingCost = (data.budget.buildingWorksCost || 0) * 10000;
         const brokerageBase = isLandMode ? landPrice : (landPrice + buildingCost);
         const brokerage = brokerageBase > 4000000 ? (brokerageBase * 0.03 + 60000) * 1.1 : 0;
 
-        // Update Store (Convert back to Man-yen)
         updateBudget({
-            registrationTax: Math.round((regLand + regBuilding) / 10000),
-            acquisitionTax: Math.max(0, Math.round((acqLand + acqBuilding) / 10000)),
             brokerageFee: Math.round(brokerage / 10000),
-            // Stamp duty is tiered, let's just leave it or generic 1-2 man
-            stampDuty: 1,
         });
     };
 
@@ -66,8 +95,8 @@ export const Screen2_Budget: React.FC = () => {
         <div className="max-w-4xl mx-auto space-y-8 animate-in pb-20">
             <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-slate-800">事業予算・建築費 (Project Budget)</h2>
-                <Button variant="secondary" size="sm" onClick={calculateEstimates} className="flex items-center gap-2">
-                    <RefreshCw className="h-4 w-4" /> 諸経費概算を自動計算
+                <Button variant="secondary" size="sm" onClick={calculateBrokerageEstimate} className="flex items-center gap-2">
+                    <RefreshCw className="h-4 w-4" /> 仲介概算を計算
                 </Button>
             </div>
 
@@ -123,22 +152,34 @@ export const Screen2_Budget: React.FC = () => {
                             label="印紙税"
                             type="number"
                             unit="万円"
-                            value={data.budget.stampDuty || ''}
-                            onChange={(e) => updateBudget({ stampDuty: parseFloat(e.target.value) })}
+                            value={data.budget.stampDuty === 0 ? '' : data.budget.stampDuty}
+                            onChange={(e) => updateBudget({ stampDuty: parseFloat(e.target.value) || 0, isAutoStampDuty: false })}
+                            actionIcon={!data.budget.isAutoStampDuty ? <RefreshCw className="h-4 w-4" /> : undefined}
+                            actionTooltip="自動計算に戻す"
+                            onAction={() => updateBudget({ isAutoStampDuty: true })}
+                            help="購入金額に基づき概算。手動変更で固定されます。"
                         />
                         <InputGroup
                             label="登録免許税"
                             type="number"
                             unit="万円"
-                            value={data.budget.registrationTax || ''}
-                            onChange={(e) => updateBudget({ registrationTax: parseFloat(e.target.value) })}
+                            value={data.budget.registrationTax === 0 ? '' : data.budget.registrationTax}
+                            onChange={(e) => updateBudget({ registrationTax: parseFloat(e.target.value) || 0, isAutoRegistrationTax: false })}
+                            actionIcon={!data.budget.isAutoRegistrationTax ? <RefreshCw className="h-4 w-4" /> : undefined}
+                            actionTooltip="自動計算に戻す"
+                            onAction={() => updateBudget({ isAutoRegistrationTax: true })}
+                            help="購入金額の70/50%を評価額として概算。手動変更で固定されます。"
                         />
                         <InputGroup
                             label="不動産取得税"
                             type="number"
                             unit="万円"
-                            value={data.budget.acquisitionTax || ''}
-                            onChange={(e) => updateBudget({ acquisitionTax: parseFloat(e.target.value) })}
+                            value={data.budget.acquisitionTax === 0 ? '' : data.budget.acquisitionTax}
+                            onChange={(e) => updateBudget({ acquisitionTax: parseFloat(e.target.value) || 0, isAutoAcquisitionTax: false })}
+                            actionIcon={!data.budget.isAutoAcquisitionTax ? <RefreshCw className="h-4 w-4" /> : undefined}
+                            actionTooltip="自動計算に戻す"
+                            onAction={() => updateBudget({ isAutoAcquisitionTax: true })}
+                            help="購入金額の70/50%を評価額として概算。手動変更で固定されます。"
                         />
                         <InputGroup
                             label="火災保険料 (一括)"

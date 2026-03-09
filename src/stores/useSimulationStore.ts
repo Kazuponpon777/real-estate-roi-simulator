@@ -55,8 +55,11 @@ export interface ProjectBudget {
 
     // Initial Expenses
     stampDuty: number; // 印紙税
+    isAutoStampDuty?: boolean;
     registrationTax: number; // 登録免許税
+    isAutoRegistrationTax?: boolean;
     acquisitionTax: number; // 不動産取得税
+    isAutoAcquisitionTax?: boolean;
     fireInsurancePrepaid: number; // 火災保険一括
     waterContribution: number; // 水道分担金
     brokerageFee: number; // 仲介手数料 (added commonly)
@@ -202,8 +205,11 @@ const INITIAL_DATA: SimulationData = {
         demolitionCost: 0,
         buildingWorksCost: 0,
         stampDuty: 0,
+        isAutoStampDuty: true,
         registrationTax: 0,
+        isAutoRegistrationTax: true,
         acquisitionTax: 0,
+        isAutoAcquisitionTax: true,
         fireInsurancePrepaid: 0,
         waterContribution: 0,
         brokerageFee: 0,
