@@ -18,7 +18,7 @@ export const Screen2_Budget: React.FC = () => {
         const newUpdates: Partial<typeof data.budget> = {};
 
         // 1. Stamp Duty
-        if (data.budget.isAutoStampDuty) {
+        if (data.budget.isAutoStampDuty !== false) {
             let stamp = 1;
             const total = landPrice + (isLandMode ? buildingCost : 0);
             if (total > 100000000) stamp = 6;
@@ -35,7 +35,7 @@ export const Screen2_Budget: React.FC = () => {
         const estBuildingTaxValue = buildingCost * 0.5;
 
         // 2. Registration Tax
-        if (data.budget.isAutoRegistrationTax) {
+        if (data.budget.isAutoRegistrationTax !== false) {
             const regLand = estLandTaxValue * TAX_RATES.REGISTRATION_LICENSE.LAND_OWNERSHIP_TRANSFER;
             const regBuilding = isLandMode
                 ? estBuildingTaxValue * TAX_RATES.REGISTRATION_LICENSE.BUILDING_PRESERVATION
@@ -46,7 +46,7 @@ export const Screen2_Budget: React.FC = () => {
         }
 
         // 3. Acquisition Tax
-        if (data.budget.isAutoAcquisitionTax) {
+        if (data.budget.isAutoAcquisitionTax !== false) {
             const acqLand = Math.max(0, (estLandTaxValue - (isLandMode ? 12000000 : 0)) * TAX_RATES.REAL_ESTATE_ACQUISITION.LAND);
             const acqBuilding = estBuildingTaxValue * TAX_RATES.REAL_ESTATE_ACQUISITION.BUILDING;
             const acqTotalMan = Math.max(0, Math.round((acqLand + acqBuilding) / 10000));
@@ -75,6 +75,9 @@ export const Screen2_Budget: React.FC = () => {
 
         updateBudget({
             brokerageFee: Math.round(brokerage / 10000),
+            isAutoStampDuty: true,
+            isAutoRegistrationTax: true,
+            isAutoAcquisitionTax: true,
         });
     };
 
@@ -154,7 +157,7 @@ export const Screen2_Budget: React.FC = () => {
                             unit="万円"
                             value={data.budget.stampDuty === 0 ? '' : data.budget.stampDuty}
                             onChange={(e) => updateBudget({ stampDuty: parseFloat(e.target.value) || 0, isAutoStampDuty: false })}
-                            actionIcon={!data.budget.isAutoStampDuty ? <RefreshCw className="h-4 w-4" /> : undefined}
+                            actionIcon={data.budget.isAutoStampDuty === false ? <RefreshCw className="h-4 w-4" /> : undefined}
                             actionTooltip="自動計算に戻す"
                             onAction={() => updateBudget({ isAutoStampDuty: true })}
                             help="購入金額に基づき概算。手動変更で固定されます。"
@@ -165,7 +168,7 @@ export const Screen2_Budget: React.FC = () => {
                             unit="万円"
                             value={data.budget.registrationTax === 0 ? '' : data.budget.registrationTax}
                             onChange={(e) => updateBudget({ registrationTax: parseFloat(e.target.value) || 0, isAutoRegistrationTax: false })}
-                            actionIcon={!data.budget.isAutoRegistrationTax ? <RefreshCw className="h-4 w-4" /> : undefined}
+                            actionIcon={data.budget.isAutoRegistrationTax === false ? <RefreshCw className="h-4 w-4" /> : undefined}
                             actionTooltip="自動計算に戻す"
                             onAction={() => updateBudget({ isAutoRegistrationTax: true })}
                             help="購入金額の70/50%を評価額として概算。手動変更で固定されます。"
@@ -176,7 +179,7 @@ export const Screen2_Budget: React.FC = () => {
                             unit="万円"
                             value={data.budget.acquisitionTax === 0 ? '' : data.budget.acquisitionTax}
                             onChange={(e) => updateBudget({ acquisitionTax: parseFloat(e.target.value) || 0, isAutoAcquisitionTax: false })}
-                            actionIcon={!data.budget.isAutoAcquisitionTax ? <RefreshCw className="h-4 w-4" /> : undefined}
+                            actionIcon={data.budget.isAutoAcquisitionTax === false ? <RefreshCw className="h-4 w-4" /> : undefined}
                             actionTooltip="自動計算に戻す"
                             onAction={() => updateBudget({ isAutoAcquisitionTax: true })}
                             help="購入金額の70/50%を評価額として概算。手動変更で固定されます。"
