@@ -107,41 +107,51 @@ export const Screen4_RentRoll: React.FC = () => {
                                     </select>
                                 </td>
                                 <td className="px-4 py-2.5">
-                                    <input
-                                        className="w-full bg-transparent border-b border-slate-200 hover:border-slate-300 focus:border-indigo-500 focus:outline-none px-1 py-1 text-slate-700 placeholder-slate-300 transition-colors"
-                                        placeholder={room.usage === 'commercial' ? "例: 店舗A" : "例: 1K"}
-                                        value={room.name}
-                                        list={listId}
-                                        onChange={(e) => updateRoomType(room.id, { name: e.target.value })}
-                                    />
-                                    {/* プルダウン候補と手入力を両立するデータリスト */}
-                                    <datalist id={listId}>
-                                        {room.usage === 'commercial' ? (
-                                            <>
-                                                <option value="テナント店舗" />
-                                                <option value="事務所・オフィス" />
-                                                <option value="コンビニ" />
-                                                <option value="クリニック" />
-                                                <option value="飲食店" />
-                                                <option value="ショールーム" />
-                                            </>
-                                        ) : (
-                                            <>
-                                                <option value="1K" />
-                                                <option value="1DK" />
-                                                <option value="1LDK" />
-                                                <option value="2DK" />
-                                                <option value="2LDK" />
-                                                <option value="3LDK" />
-                                                <option value="ファミリータイプ" />
-                                            </>
-                                        )}
-                                    </datalist>
+                                    <div className="flex items-center gap-1.5 w-full">
+                                        <input
+                                            className="flex-1 bg-transparent border-b border-slate-200 hover:border-slate-300 focus:border-indigo-500 focus:outline-none px-1 py-0.5 text-slate-700 placeholder-slate-300 transition-colors text-sm font-medium"
+                                            placeholder={room.usage === 'commercial' ? "例: 店舗A" : "例: 1K"}
+                                            value={room.name}
+                                            onChange={(e) => updateRoomType(room.id, { name: e.target.value })}
+                                        />
+                                        {/* クイック選択プルダウン (選ぶと自動的に左の入力欄にコピーされます) */}
+                                        <select
+                                            className="rounded border border-slate-200 bg-slate-50 text-[10px] text-slate-500 px-1 py-1 focus:border-indigo-500 focus:outline-none cursor-pointer hover:bg-slate-100 transition-colors"
+                                            value=""
+                                            onChange={(e) => {
+                                                if (e.target.value) {
+                                                    updateRoomType(room.id, { name: e.target.value });
+                                                }
+                                            }}
+                                        >
+                                            <option value="" disabled>選択</option>
+                                            {room.usage === 'commercial' ? (
+                                                <>
+                                                    <option value="テナント店舗">店舗</option>
+                                                    <option value="事務所・オフィス">オフィス</option>
+                                                    <option value="コンビニ">コンビニ</option>
+                                                    <option value="クリニック">医療</option>
+                                                    <option value="飲食店">飲食</option>
+                                                    <option value="ショールーム">展示</option>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <option value="1K">1K</option>
+                                                    <option value="1DK">1DK</option>
+                                                    <option value="1LDK">1LDK</option>
+                                                    <option value="2DK">2DK</option>
+                                                    <option value="2LDK">2LDK</option>
+                                                    <option value="3LDK">3LDK</option>
+                                                    <option value="ファミリー">家族</option>
+                                                </>
+                                            )}
+                                        </select>
+                                    </div>
                                 </td>
                                 <td className="px-4 py-2.5 text-center">
                                     <input
                                         type="number"
-                                        className="w-16 bg-white border border-slate-200 rounded-md px-2 py-1 text-right focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 text-slate-700 transition-all"
+                                        className="w-16 bg-white border border-slate-200 rounded-md px-2 py-1 text-right focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 text-slate-700 transition-all text-xs"
                                         value={room.count}
                                         onChange={(e) => updateRoomType(room.id, { count: parseFloat(e.target.value) || 0 })}
                                     />
@@ -149,25 +159,33 @@ export const Screen4_RentRoll: React.FC = () => {
                                 <td className="px-4 py-2.5 text-center">
                                     <input
                                         type="number"
-                                        className="w-16 bg-white border border-slate-200 rounded-md px-2 py-1 text-right focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 text-slate-700 transition-all"
+                                        className="w-16 bg-white border border-slate-200 rounded-md px-2 py-1 text-right focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 text-slate-700 transition-all text-xs"
                                         value={room.areaM2}
                                         onChange={(e) => updateRoomType(room.id, { areaM2: parseFloat(e.target.value) || 0 })}
                                     />
                                 </td>
                                 <td className="px-4 py-2.5 text-center">
                                     <input
-                                        type="number"
-                                        className="w-24 bg-white border border-slate-200 rounded-md px-2 py-1 text-right focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 text-slate-700 font-mono transition-all"
-                                        value={room.rent}
-                                        onChange={(e) => updateRoomType(room.id, { rent: parseFloat(e.target.value) || 0 })}
+                                        type="text"
+                                        className="w-24 bg-white border border-slate-200 rounded-md px-2 py-1 text-right focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 text-slate-700 font-mono transition-all text-xs font-semibold"
+                                        value={room.rent === 0 ? '' : room.rent.toLocaleString()}
+                                        onChange={(e) => {
+                                            const rawVal = e.target.value.replace(/,/g, '');
+                                            const num = parseFloat(rawVal) || 0;
+                                            updateRoomType(room.id, { rent: num });
+                                        }}
                                     />
                                 </td>
                                 <td className="px-4 py-2.5 text-center">
                                     <input
-                                        type="number"
-                                        className="w-20 bg-white border border-slate-200 rounded-md px-2 py-1 text-right focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 text-slate-700 font-mono transition-all"
-                                        value={room.commonFee}
-                                        onChange={(e) => updateRoomType(room.id, { commonFee: parseFloat(e.target.value) || 0 })}
+                                        type="text"
+                                        className="w-20 bg-white border border-slate-200 rounded-md px-2 py-1 text-right focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 text-slate-700 font-mono transition-all text-xs font-semibold"
+                                        value={room.commonFee === 0 ? '' : room.commonFee.toLocaleString()}
+                                        onChange={(e) => {
+                                            const rawVal = e.target.value.replace(/,/g, '');
+                                            const num = parseFloat(rawVal) || 0;
+                                            updateRoomType(room.id, { commonFee: num });
+                                        }}
                                     />
                                 </td>
                                 {data.mode === 'land_lease' && (
