@@ -166,27 +166,25 @@ export const Screen4_RentRoll: React.FC = () => {
                                 </td>
                                 <td className="px-4 py-2.5 text-center">
                                     <input
-                                        type="text"
+                                        type="number"
                                         className="w-24 bg-white border border-slate-200 rounded-md px-2 py-1 text-right focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 text-slate-700 font-mono transition-all text-xs font-semibold"
-                                        value={room.rent === 0 ? '' : room.rent.toLocaleString()}
-                                        onChange={(e) => {
-                                            const rawVal = e.target.value.replace(/,/g, '');
-                                            const num = parseFloat(rawVal) || 0;
-                                            updateRoomType(room.id, { rent: num });
-                                        }}
+                                        value={room.rent === 0 ? '' : room.rent}
+                                        onChange={(e) => updateRoomType(room.id, { rent: parseFloat(e.target.value) || 0 })}
                                     />
+                                    <div className="text-[9px] text-slate-400 font-mono text-right mt-0.5 tracking-tight">
+                                        {room.rent > 0 ? `¥${room.rent.toLocaleString()}` : '—'}
+                                    </div>
                                 </td>
                                 <td className="px-4 py-2.5 text-center">
                                     <input
-                                        type="text"
+                                        type="number"
                                         className="w-20 bg-white border border-slate-200 rounded-md px-2 py-1 text-right focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 text-slate-700 font-mono transition-all text-xs font-semibold"
-                                        value={room.commonFee === 0 ? '' : room.commonFee.toLocaleString()}
-                                        onChange={(e) => {
-                                            const rawVal = e.target.value.replace(/,/g, '');
-                                            const num = parseFloat(rawVal) || 0;
-                                            updateRoomType(room.id, { commonFee: num });
-                                        }}
+                                        value={room.commonFee === 0 ? '' : room.commonFee}
+                                        onChange={(e) => updateRoomType(room.id, { commonFee: parseFloat(e.target.value) || 0 })}
                                     />
+                                    <div className="text-[9px] text-slate-400 font-mono text-right mt-0.5 tracking-tight">
+                                        {room.commonFee > 0 ? `¥${room.commonFee.toLocaleString()}` : '—'}
+                                    </div>
                                 </td>
                                 {data.mode === 'land_lease' && (
                                     <>
