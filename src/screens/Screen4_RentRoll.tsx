@@ -16,8 +16,8 @@ export const Screen4_RentRoll: React.FC = () => {
         const newRoom: RoomType = {
             id: Math.random().toString(36).substr(2, 9),
             name: isComm 
-                ? `店舗テナント${String.fromCharCode(65 + data.rentRoll.roomTypes.filter(r => r.usage === 'commercial').length)}`
-                : `住居タイプ${String.fromCharCode(65 + data.rentRoll.roomTypes.filter(r => (r.usage || 'residential') === 'residential').length)}`,
+                ? `店舗${String.fromCharCode(65 + data.rentRoll.roomTypes.filter(r => r.usage === 'commercial').length)}`
+                : `住居${String.fromCharCode(65 + data.rentRoll.roomTypes.filter(r => (r.usage || 'residential') === 'residential').length)}`,
             count: 1,
             areaM2: isComm ? 60 : 25,
             rent: isComm ? 150000 : 65000,
@@ -73,7 +73,7 @@ export const Screen4_RentRoll: React.FC = () => {
                     <thead className="bg-slate-50 text-slate-500 uppercase font-bold text-xs">
                         <tr>
                             <th className="px-4 py-3 rounded-l-lg">用途</th>
-                            <th className="px-4 py-3">タイプ名</th>
+                            <th className="px-4 py-3">間取り・名称</th>
                             <th className="px-4 py-3">戸数</th>
                             <th className="px-4 py-3">面積(㎡)</th>
                             <th className="px-4 py-3">賃料(円)</th>
@@ -105,6 +105,7 @@ export const Screen4_RentRoll: React.FC = () => {
                                 <td className="px-4 py-2">
                                     <input
                                         className="w-full bg-transparent border-b border-transparent focus:border-blue-500 focus:outline-none"
+                                        placeholder={room.usage === 'commercial' ? "例: 店舗A" : "例: 1K"}
                                         value={room.name}
                                         onChange={(e) => updateRoomType(room.id, { name: e.target.value })}
                                     />
