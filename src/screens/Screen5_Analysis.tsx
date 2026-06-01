@@ -1,3 +1,12 @@
+/**
+ * ============================================================
+ *  AI組織型コードレビュー済み
+ *  レビュー日: 2026-06-01
+ *  レビュー部署: バグチェック部 / セキュリティ部 / 改善提案部
+ *  統合修正: 開発部
+ * ============================================================
+ */
+
 import React, { useMemo } from 'react';
 import { useSimulationStore } from '../stores/useSimulationStore';
 import { Card } from '../components/ui/Card';
@@ -13,6 +22,7 @@ import { Slider } from '../components/ui/Slider';
 import { PrintLayout } from '../components/PrintLayout';
 import { generateExitTable } from '../utils/exitStrategy';
 import { calculateDepreciation, analyzeDeadCross } from '../utils/taxCalculations';
+
 // --- 減価償却・デッドクロス可視化プレミアムコンポーネントのインポート ---
 import { DeadCrossAlert } from '../components/ui/DeadCrossAlert';
 import { DepreciationChart } from '../components/ui/DepreciationChart';
@@ -68,99 +78,138 @@ export const Screen5_Analysis: React.FC = () => {
     // 【バグ修正】新築時のみ本体工事費や解体費用・中金利を合算し、中古時は購入価格と諸経費のみにする（データ混在防止）
     // 1. 総事業費（自己資金 ＋ 借入額 ＋ その他初期諸経費）の算出
     // 【バグ修正】新築・借地・中古のモードごとに、工事費や敷金を正確に合算して土地価格を処理
+    // 1. 総事業費（自己資金 ＋ 借入額 ＋ その他初期諸経費）の算出
+    // 【バグ修正】新築・借地・中古のモードごとに、工事費や敷金を正確に合算して土地価格を処理
     const isLandMode = data.mode === 'land_new';
     const isLeaseMode = data.mode === 'land_lease';
 
-    // 借地リースの場合は土地を購入しないため、地主への敷金/権利金を初期投資総額のベースとする
-    const landInitialCost = isLeaseMode ? (data.budget.landLeaseDeposit ?? 0) : data.budget.landPrice;
+    // [修正] 改善提案部の指摘: useMemo による総事業費と主要収支計算のキャッシュ化 (スライダー操作ラグ解消)
+    const budgetMetrics = useMemo(() => {
+        const landInitialCost = isLeaseMode ? (data.budget.landLeaseDeposit ?? 0) : data.budget.landPrice;
+        const totalBudget =
+            landInitialCost +
+            ((isLandMode || isLeaseMode) ? data.budget.demolitionCost : 0) +
+            ((isLandMode || isLeaseMode) ? data.budget.buildingWorksCost : 0) +
+            data.budget.stampDuty +
+            data.budget.registrationTax +
+            data.budget.acquisitionTax +
+            data.budget.fireInsurancePrepaid +
+            data.budget.waterContribution +
+            (!isLandMode && !isLeaseMode ? data.budget.brokerageFee : 0) +
+            data.budget.otherInitialCost +
+            ((isLandMode || isLeaseMode) ? data.budget.constructionInterest : 0);
+        const totalBudgetYen = totalBudget * 10000;
+        return { totalBudget, totalBudgetYen };
+    }, [data.budget, data.mode, isLandMode, isLeaseMode]);
 
-    const totalBudget =
-        landInitialCost +
-        ((isLandMode || isLeaseMode) ? data.budget.demolitionCost : 0) +
-        ((isLandMode || isLeaseMode) ? data.budget.buildingWorksCost : 0) +
-        data.budget.stampDuty +
-        data.budget.registrationTax +
-        data.budget.acquisitionTax +
-        data.budget.fireInsurancePrepaid +
-        data.budget.waterContribution +
-        (!isLandMode && !isLeaseMode ? data.budget.brokerageFee : 0) + // 新築・借地時は仲介手数料なし
-        data.budget.otherInitialCost +
-        ((isLandMode || isLeaseMode) ? data.budget.constructionInterest : 0);
-
-    const totalBudgetYen = totalBudget * 10000;
+    const { totalBudgetYen } = budgetMetrics;
 
     // 2. Income
-    const totalMonthlyRent = data.rentRoll.roomTypes.reduce((acc, r) => acc + (r.rent + r.commonFee) * r.count, 0);
-    const totalMonthlyParking = data.rentRoll.parkingCount * data.rentRoll.parkingFee;
-    const monthlyGrossIncome = totalMonthlyRent + totalMonthlyParking; // Assuming 100% occupancy for Potential Gross
-    const annualPotentialGrossIncome = (monthlyGrossIncome + data.rentRoll.otherRevenue + (data.rentRoll.solarPowerIncome || 0)) * 12;
+    const rentRollMetrics = useMemo(() => {
+        const totalMonthlyRent = data.rentRoll.roomTypes.reduce((acc, r) => acc + (r.rent + r.commonFee) * r.count, 0);
+        const totalMonthlyParking = data.rentRoll.parkingCount * data.rentRoll.parkingFee;
+        const monthlyGrossIncome = totalMonthlyRent + totalMonthlyParking;
+        const annualPotentialGrossIncome = (monthlyGrossIncome + data.rentRoll.otherRevenue + (data.rentRoll.solarPowerIncome || 0)) * 12;
 
-    // Effective Gross Income (EGI)
-    const vacancyLoss = annualPotentialGrossIncome * (data.rentRoll.occupancyRate ? (100 - data.rentRoll.occupancyRate) / 100 : 0.05);
-    const effectiveGrossIncome = annualPotentialGrossIncome - vacancyLoss;
+        const vacancyLoss = annualPotentialGrossIncome * (data.rentRoll.occupancyRate ? (100 - data.rentRoll.occupancyRate) / 100 : 0.05);
+        const effectiveGrossIncome = annualPotentialGrossIncome - vacancyLoss;
+
+        return { totalMonthlyRent, totalMonthlyParking, monthlyGrossIncome, annualPotentialGrossIncome, vacancyLoss, effectiveGrossIncome };
+    }, [data.rentRoll]);
+
+    const { annualPotentialGrossIncome, vacancyLoss, effectiveGrossIncome } = rentRollMetrics;
 
     // 3. Operating Expenses (OPEX)
+    const incomeExpenseMetrics = useMemo(() => {
+        let annualManagementFee = 0;
+        if (data.expenses.managementFeeMode === 'ratio') {
+            annualManagementFee = effectiveGrossIncome * (data.expenses.managementFeeRatio / 100);
+        } else {
+            annualManagementFee = data.expenses.managementFeeFixed * 12;
+        }
 
-    // Management Fee
-    let annualManagementFee = 0;
-    if (data.expenses.managementFeeMode === 'ratio') {
-        annualManagementFee = effectiveGrossIncome * (data.expenses.managementFeeRatio / 100);
-    } else {
-        annualManagementFee = data.expenses.managementFeeFixed * 12;
-    }
+        const annualBuildingMaintenance = data.expenses.buildingMaintenance * 12;
+        const annualMaintenanceReserve = data.expenses.maintenanceReserve * 12;
 
-    // Other monthly to annual
-    const annualBuildingMaintenance = data.expenses.buildingMaintenance * 12;
-    const annualMaintenanceReserve = data.expenses.maintenanceReserve * 12; // Assuming input is monthly total
+        // 借地リースの場合、土地の固定資産税・都市計画税は地主負担のため0円とする
+        const fixedAssetTaxLand = isLeaseMode ? 0 : data.expenses.fixedAssetTaxLand;
+        const cityPlanningTaxLand = isLeaseMode ? 0 : data.expenses.cityPlanningTaxLand;
+        const landLeaseFeeAnnual = isLeaseMode ? (data.advancedSettings?.landLeaseFee ?? 0) * 12 : 0;
 
-    // 借地リースの場合、土地の固定資産税・都市計画税は地主負担のため0円とする
-    const fixedAssetTaxLand = isLeaseMode ? 0 : data.expenses.fixedAssetTaxLand;
-    const cityPlanningTaxLand = isLeaseMode ? 0 : data.expenses.cityPlanningTaxLand;
-    const landLeaseFeeAnnual = isLeaseMode ? (data.advancedSettings?.landLeaseFee ?? 0) * 12 : 0; // 地主への支払地代(年額)
+        const annualTaxes =
+            fixedAssetTaxLand +
+            cityPlanningTaxLand +
+            data.expenses.fixedAssetTaxBuilding +
+            data.expenses.cityPlanningTaxBuilding;
 
-    const annualTaxes =
-        fixedAssetTaxLand +
-        cityPlanningTaxLand +
-        data.expenses.fixedAssetTaxBuilding +
-        data.expenses.cityPlanningTaxBuilding;
+        const totalOpex =
+            annualManagementFee +
+            annualBuildingMaintenance +
+            annualMaintenanceReserve +
+            annualTaxes +
+            data.expenses.fireInsuranceAnnual +
+            data.expenses.otherExpenses +
+            landLeaseFeeAnnual;
 
-    const totalOpex =
-        annualManagementFee +
-        annualBuildingMaintenance +
-        annualMaintenanceReserve +
-        annualTaxes +
-        data.expenses.fireInsuranceAnnual +
-        data.expenses.otherExpenses +
-        landLeaseFeeAnnual; // 地代を運営経費に算入
+        // 4. Net Operating Income (NOI)
+        const noi = effectiveGrossIncome - totalOpex;
 
-    // 4. Net Operating Income (NOI)
-    const noi = effectiveGrossIncome - totalOpex;
-
-    // 5. Debt Service (ADS)
-    let annualDebtService = 0;
-    data.funding.loans.forEach(loan => {
-        const pmt = calculatePmt(loan.amount * 10000, loan.rate, loan.duration);
-        annualDebtService += pmt * 12;
-    });
-
-    // 6. Cash Flow
-    // 【借地リース特別ルール】預かった建設協力金は毎年均等返還するため、初年度の返還金を手残りから差し引きます
-    let firstYearCooperationReturnYen = 0;
-    if (isLeaseMode) {
-        data.rentRoll.roomTypes.forEach(r => {
-            const returnYears = r.cooperationReturnYears ?? 20;
-            if (returnYears > 0) {
-                const totalCoop = r.rent * r.count * (r.cooperationMonths ?? 0);
-                firstYearCooperationReturnYen += totalCoop / returnYears;
-            }
+        // 5. Debt Service (ADS)
+        let annualDebtService = 0;
+        data.funding.loans.forEach(loan => {
+            const pmt = calculatePmt(loan.amount * 10000, loan.rate, loan.duration);
+            annualDebtService += pmt * 12;
         });
-    }
 
-    const beforeTaxCashFlow = noi - annualDebtService - firstYearCooperationReturnYen;
+        // 6. Cash Flow
+        // 【借地リース特別ルール】預かった建設協力金は毎年均等返還するため、初年度の返還金を手残りから差し引きます
+        let firstYearCooperationReturnYen = 0;
+        if (isLeaseMode) {
+            data.rentRoll.roomTypes.forEach(r => {
+                const returnYears = r.cooperationReturnYears ?? 20;
+                if (returnYears > 0) {
+                    const totalCoop = r.rent * r.count * (r.cooperationMonths ?? 0);
+                    firstYearCooperationReturnYen += totalCoop / returnYears;
+                }
+            });
+        }
 
-    // 7. Yields
-    const grossYield = totalBudgetYen > 0 ? (annualPotentialGrossIncome / totalBudgetYen) * 100 : 0;
-    const netYield = totalBudgetYen > 0 ? (noi / totalBudgetYen) * 100 : 0;
+        const beforeTaxCashFlow = noi - annualDebtService - firstYearCooperationReturnYen;
+
+        // 7. Yields
+        const grossYield = totalBudgetYen > 0 ? (annualPotentialGrossIncome / totalBudgetYen) * 100 : 0;
+        const netYield = totalBudgetYen > 0 ? (noi / totalBudgetYen) * 100 : 0;
+
+        return {
+            annualManagementFee,
+            annualBuildingMaintenance,
+            annualMaintenanceReserve,
+            landLeaseFeeAnnual,
+            annualTaxes,
+            totalOpex,
+            noi,
+            annualDebtService,
+            firstYearCooperationReturnYen,
+            beforeTaxCashFlow,
+            grossYield,
+            netYield
+        };
+    }, [data.expenses, data.funding.loans, data.rentRoll, data.advancedSettings, effectiveGrossIncome, isLeaseMode, totalBudgetYen, annualPotentialGrossIncome]);
+
+    const {
+        annualManagementFee,
+        annualBuildingMaintenance,
+        annualMaintenanceReserve,
+        landLeaseFeeAnnual,
+        annualTaxes,
+        totalOpex,
+        noi,
+        annualDebtService,
+        firstYearCooperationReturnYen,
+        beforeTaxCashFlow,
+        grossYield,
+        netYield
+    } = incomeExpenseMetrics;
 
     // Investment Metrics
     const investmentMetrics = useMemo(() => getInvestmentMetrics(data, projectionData), [data, projectionData]);

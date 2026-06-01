@@ -1,3 +1,12 @@
+/**
+ * ============================================================
+ *  AI組織型コードレビュー済み
+ *  レビュー日: 2026-06-01
+ *  レビュー部署: バグチェック部 / セキュリティ部 / 改善提案部
+ *  統合修正: 開発部
+ * ============================================================
+ */
+
 import React from 'react';
 import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, ReferenceDot } from 'recharts';
 import { formatCurrency } from '../../utils/formatters';
@@ -5,6 +14,8 @@ import { formatCurrency } from '../../utils/formatters';
 interface ChartRow {
     year: number;
     depreciation: number;
+    depreciationBuilding?: number;  // [修正] 改善提案部の指摘: 建物本体の減価償却費
+    depreciationEquipment?: number; // [修正] 改善提案部の指摘: 設備の減価償却費
     principal: number;
     atcf: number;
 }
@@ -29,10 +40,15 @@ export const DepreciationChart: React.FC<DepreciationChartProps> = ({ data, dead
             <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={data} margin={{ top: 25, right: 30, left: 15, bottom: 5 }}>
                     <defs>
-                        {/* 減価償却費エリア用の美しいパープルグラデーション */}
-                        <linearGradient id="colorDepr" x1="0" y1="0" x2="0" y2="1">
+                        {/* 建物本体用の美しいパープルグラデーション */}
+                        <linearGradient id="colorBuilding" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#818cf8" stopOpacity={0.35}/>
                             <stop offset="95%" stopColor="#818cf8" stopOpacity={0.0}/>
+                        </linearGradient>
+                        {/* 設備用の美しいエメラルドグリーン・グラデーション */}
+                        <linearGradient id="colorEquipment" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.35}/>
+                            <stop offset="95%" stopColor="#10b981" stopOpacity={0.0}/>
                         </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -63,14 +79,26 @@ export const DepreciationChart: React.FC<DepreciationChartProps> = ({ data, dead
                     />
                     <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
                     
-                    {/* 減価償却費 (面グラフ: 半透明パープル) */}
+                    {/* 建物本体の減価償却費 (積層面グラフ) */}
                     <Area 
                         type="monotone" 
-                        dataKey="depreciation" 
-                        name="減価償却費 (支出なし経費)" 
+                        dataKey="depreciationBuilding" 
+                        stackId="depr"
+                        name="建物本体 減価償却" 
                         stroke="#6366f1" 
-                        strokeWidth={2.5} 
-                        fill="url(#colorDepr)" 
+                        strokeWidth={2}
+                        fill="url(#colorBuilding)" 
+                    />
+
+                    {/* 建物附属設備の減価償却費 (積層面グラフ) */}
+                    <Area 
+                        type="monotone" 
+                        dataKey="depreciationEquipment" 
+                        stackId="depr"
+                        name="建物附属設備 減価償却" 
+                        stroke="#10b981" 
+                        strokeWidth={2}
+                        fill="url(#colorEquipment)" 
                     />
                     
                     {/* ローン元金返済額 (折れ線グラフ: ゴールド) */}

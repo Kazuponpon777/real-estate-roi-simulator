@@ -1,3 +1,12 @@
+/**
+ * ============================================================
+ *  AI組織型コードレビュー済み
+ *  レビュー日: 2026-06-01
+ *  レビュー部署: バグチェック部 / セキュリティ部 / 改善提案部
+ *  統合修正: 開発部
+ * ============================================================
+ */
+
 import type { SimulationData } from "../stores/useSimulationStore";
 import { calculatePmt } from "./calculations";
 import {
@@ -22,6 +31,8 @@ export interface AnnualData {
     btcf: number; // Before Tax Cash Flow
     // Tax & Depreciation (Phase 1)
     depreciation: number;
+    depreciationBuilding?: number; // [修正] 改善提案部の指摘: 建物本体の減価償却費
+    depreciationEquipment?: number; // [修正] 改善提案部の指摘: 附属設備の減価償却費
     taxableIncome: number; // NOI - depreciation - interest
     taxAmount: number;
     atcf: number; // After Tax Cash Flow
@@ -33,6 +44,7 @@ export interface AnnualData {
     ccr: number; // BTCF / Equity
     cooperationReturn?: number; // 借地リース用：建設協力金の年間返還額
 }
+
 
 export const calculateLongTermProjection = (data: SimulationData, years: number = 35): AnnualData[] => {
     const projection: AnnualData[] = [];
@@ -50,9 +62,10 @@ export const calculateLongTermProjection = (data: SimulationData, years: number 
         });
     }
 
-    // 自己資金のマイナス（自己資金 ＋ テナント建設協力金 を初期調達として扱う）
+    // 自己資金のマイナス
     const ownCapitalYen = data.funding.ownCapital * 10000;
-    let currentAccumulatedCF = -ownCapitalYen;
+    // [修正] QA部の指摘: 建設協力金は初期の建築資金に充当されるため、初期の手出し自己資金アウトフローを削減します
+    let currentAccumulatedCF = -ownCapitalYen + totalCooperationMoneyYen;
 
     // --- 建物価格の決定 ---
     // 中古の場合は購入価格×建物割合、新築・借地リースの場合は本体工事費を使用
@@ -109,8 +122,11 @@ export const calculateLongTermProjection = (data: SimulationData, years: number 
     const landLeaseFeeAnnual = isLeaseMode ? (data.advancedSettings?.landLeaseFee ?? 0) * 12 : 0; // 地主へ支払う年間地代
 
     const isNewOrLease = data.mode === 'land_new' || data.mode === 'land_lease';
-    // 新築・借地リースの場合は毎年の火災保険料は発生せず、5年周期のスポット一括払いとなるため毎年の経費から除外
-    const fireInsuranceAnnual = isNewOrLease ? 0 : data.expenses.fireInsuranceAnnual;
+    // [修正] QA部の指摘: 新築・借地リースの場合は毎年の火災保険料は5年一括保険料を5分割で均等期間按分（経費化）します。
+    // キャッシュアウトとしては別途スポットで計上します。
+    const fireInsuranceAnnual = isNewOrLease 
+        ? ((data.budget.fireInsurancePrepaid || 0) * 10000) / 5
+        : data.expenses.fireInsuranceAnnual;
 
     const fixedOpexPart =
         (data.expenses.buildingMaintenance * 12) +
@@ -149,15 +165,15 @@ export const calculateLongTermProjection = (data: SimulationData, years: number 
             managementFee = data.expenses.managementFeeFixed * 12;
         }
 
-        // 火災保険料（5年一括）の5年周期スポット更新計算 (1年目は初期費用、次は6, 11, 16, 21, 26, 31年目に再発生)
-        let spotFireInsuranceYen = 0;
-        const isNewOrLease = data.mode === 'land_new' || data.mode === 'land_lease';
-        if (isNewOrLease && y > 1 && y % 5 === 1) {
-            spotFireInsuranceYen = (data.budget.fireInsurancePrepaid || 0) * 10000;
-        }
-
-        const opex = fixedOpexPart + managementFee + spotFireInsuranceYen;
+        // [修正] QA部の指摘: 5年一括火災保険料は期間按分して fixedOpexPart に毎年計上するため、opex計算上でのスポット加算は廃止します。
+        const opex = fixedOpexPart + managementFee;
         const noi = effectiveIncome - opex;
+
+        // 火災保険料（5年一括）の5年周期スポット更新キャッシュアウト (6, 11, 16, 21, 26, 31年目の期首に再発生)
+        let spotFireInsuranceOutflow = 0;
+        if (isNewOrLease && y > 1 && y % 5 === 1) {
+            spotFireInsuranceOutflow = (data.budget.fireInsurancePrepaid || 0) * 10000;
+        }
 
         // === 3. Debt Service (with interest rate rise) ===
         let annualAds = 0;
@@ -218,20 +234,25 @@ export const calculateLongTermProjection = (data: SimulationData, years: number 
         let annualCooperationReturnYen = 0;
         if (isLeaseMode) {
             data.rentRoll.roomTypes.forEach(r => {
-                const returnYears = r.cooperationReturnYears ?? 20;
+                // [修正] セキュリティ部の指摘: 返還期間が0年以下・負数の場合のゼロ除算・負数インジェクションをガード
+                const rawReturnYears = r.cooperationReturnYears;
+                const returnYears = (typeof rawReturnYears === 'number' && rawReturnYears > 0) ? Math.floor(rawReturnYears) : 20;
                 if (y <= returnYears) {
-                    const totalCoop = r.rent * r.count * (r.cooperationMonths ?? 0);
+                    const totalCoop = (r.rent || 0) * (r.count || 0) * (r.cooperationMonths ?? 0);
                     annualCooperationReturnYen += totalCoop / returnYears;
                 }
             });
         }
 
         // === 5. BTCF (税引前キャッシュフロー) ===
-        // 営業純利益 (NOI) - ローン返済 (ADS) - 建設協力金返還額
-        const btcf = noi - annualAds - annualCooperationReturnYen;
+        // 営業純利益 (NOI) - ローン返済 (ADS) - 建設協力金返還額 - [修正]火災保険スポット支払額
+        const btcf = noi - annualAds - annualCooperationReturnYen - spotFireInsuranceOutflow;
 
         // === 6. 減価償却費 ＆ 課税所得 (Phase 1) ===
         const yearDepreciation = getYearlyDepreciation(depInfo, y);
+        // [修正] 改善提案部の指摘: 積層グラフ表示用に建物本体と設備の償却費を個別に算出
+        const yearDeprBuilding = y <= depInfo.buildingUsefulLife ? depInfo.buildingDepreciation : 0;
+        const yearDeprEquipment = y <= depInfo.equipmentUsefulLife ? depInfo.equipmentDepreciation : 0;
 
         // 課税所得 = NOI - 減価償却費 - ローン金利 (※元金返済および建設協力金返済は経費外支出)
         const taxableIncome = noi - yearDepreciation - annualInterest;
@@ -265,6 +286,8 @@ export const calculateLongTermProjection = (data: SimulationData, years: number 
             principal: annualPrincipal,
             btcf,
             depreciation: yearDepreciation,
+            depreciationBuilding: yearDeprBuilding, // [修正] 改善提案部の指摘: 建物本体の減価償却費を追加
+            depreciationEquipment: yearDeprEquipment, // [修正] 改善提案部の指摘: 設備の減価償却費を追加
             taxableIncome,
             taxAmount,
             atcf,
@@ -325,25 +348,39 @@ export const getInvestmentMetrics = (
     const ownCapitalYen = data.funding.ownCapital * 10000;
     const finalYear = projection[projection.length - 1];
 
+    const isLeaseMode = data.mode === 'land_lease';
+    const isUsed = data.mode === 'investment_used';
+
+    // 建設協力金総額の再計算
+    let totalCooperationMoneyYen = 0;
+    if (isLeaseMode) {
+        data.rentRoll.roomTypes.forEach(r => {
+            const months = r.cooperationMonths ?? 0;
+            totalCooperationMoneyYen += r.rent * r.count * months;
+        });
+    }
+
     // --- 最終年の想定売却手取り(Net Sale Proceeds)を計算 ---
     let netSaleProceeds = 0;
     if (finalYear) {
         const exitCapRate = data.advancedSettings?.exitCapRate ?? 6.0;
-        const isLeaseMode = data.mode === 'land_lease';
-        const isUsed = data.mode === 'investment_used';
         
         // 建物・土地の按分コスト (借地リースモードも考慮して完全に算出)
         const buildingCost = isUsed
             ? (data.budget.landPrice * (data.advancedSettings?.buildingRatio ?? 50) / 100) * 10000
             : data.budget.buildingWorksCost * 10000;
             
-        // 土地代の処理: 借地リースの場合は土地を購入しないため「土地売却額」はありませんが、
-        // 預けていた土地敷金(landLeaseDeposit)が期末に戻るため、それを土地の回収価値(landCost)として代入します
+        // [修正] QA部の指摘: 土地敷金は譲渡所得税の計算（簿価）には含めないため、
+        // calculateExitAnalysis で isLeaseMode/landLeaseDeposit を正確に処理できるよう、
+        // 借地リースの場合は originalBuildingCost のみとし、landCost は 0 とします。
+        // また新築（land_new）時は、demolitionCost（解体費）を土地の取得簿価に正しく算入します。
         const landCost = isLeaseMode
-            ? (data.budget.landLeaseDeposit ?? 0) * 10000
+            ? 0
             : (isUsed
                 ? (data.budget.landPrice * (100 - (data.advancedSettings?.buildingRatio ?? 50)) / 100) * 10000
-                : data.budget.landPrice * 10000);
+                : (data.budget.landPrice + (data.budget.demolitionCost ?? 0)) * 10000);
+
+        const landLeaseDepositYen = isLeaseMode ? (data.budget.landLeaseDeposit ?? 0) * 10000 : 0;
 
         const depInfo: DepreciationInfo = calculateDepreciation(
             data.property.structure,
@@ -364,14 +401,17 @@ export const getInvestmentMetrics = (
             buildingCost,
             landCost,
             ownCapitalYen,
-            depInfo
+            depInfo,
+            isLeaseMode,
+            landLeaseDepositYen
         );
         netSaleProceeds = exit.netSaleProceeds;
     }
 
-    // IRR用のキャッシュフロー配列: [-自己資金, 1年目CF, 2年目CF, ..., (最終年CF + 売却手取り)]
-    // 【バグ修正】35年目期末に物件を売却したと仮定し、売却手取りを加算して正しい税引後IRRを算出
-    const irrCashflows = [-ownCapitalYen, ...projection.map(p => p.atcf)];
+    // IRR用のキャッシュフロー配列: [-純自己資金, 1年目CF, 2年目CF, ..., (最終年CF + 売却手取り)]
+    // [修正] QA部の指摘: 借地リース時は建設協力金を初期資金に充当するため、初期アウトフローを 建設協力金分だけ削減します。
+    const initialOutflow = ownCapitalYen - totalCooperationMoneyYen;
+    const irrCashflows = [-initialOutflow, ...projection.map(p => p.atcf)];
     if (irrCashflows.length > 1 && netSaleProceeds > 0) {
         irrCashflows[irrCashflows.length - 1] += netSaleProceeds;
     }

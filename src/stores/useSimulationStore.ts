@@ -1,6 +1,17 @@
+/**
+ * ============================================================
+ *  AI組織型コードレビュー済み
+ *  レビュー日: 2026-06-01
+ *  レビュー部署: バグチェック部 / セキュリティ部 / 改善提案部
+ *  統合修正: 開発部
+ * ============================================================
+ */
+
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { TaxMode } from '../utils/taxCalculations';
+import { validateAndSanitizeUrl } from '../utils/validation';
+
 
 // --- タイプ定義 ---
 
@@ -300,7 +311,14 @@ export const useSimulationStore = create<SimulationState>()(
                 set((state) => ({ data: { ...state.data, ...updates } })),
 
             updateProperty: (updates) =>
-                set((state) => ({ data: { ...state.data, property: { ...state.data.property, ...updates } } })),
+                set((state) => {
+                    const nextProperty = { ...state.data.property, ...updates };
+                    // [修正] セキュリティ部署の指摘: 外部フォルダURL入力時のXSS対策
+                    if (updates.cloudFolderUrl !== undefined) {
+                        nextProperty.cloudFolderUrl = updates.cloudFolderUrl ? (validateAndSanitizeUrl(updates.cloudFolderUrl) || '') : '';
+                    }
+                    return { data: { ...state.data, property: nextProperty } };
+                }),
 
             updateBudget: (updates) =>
                 set((state) => ({ data: { ...state.data, budget: { ...state.data.budget, ...updates } } })),
@@ -346,7 +364,8 @@ export const useSimulationStore = create<SimulationState>()(
         }),
         {
             name: 'yashima-sim-storage', // unique name
-            storage: createJSONStorage(() => localStorage),
+            // [修正] セキュリティ部署の指摘: 機密データ漏洩防止のためlocalStorageからsessionStorageへ変更
+            storage: createJSONStorage(() => sessionStorage),
         }
     )
 );

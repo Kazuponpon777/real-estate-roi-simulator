@@ -1,4 +1,13 @@
 /**
+ * ============================================================
+ *  AI組織型コードレビュー済み
+ *  レビュー日: 2026-06-01
+ *  レビュー部署: バグチェック部 / セキュリティ部 / 改善提案部
+ *  統合修正: 開発部
+ * ============================================================
+ */
+
+/**
  * Exit Strategy / Sale Simulation Utilities
  *
  * Handles:
@@ -8,6 +17,7 @@
  * - Net sale proceeds
  * - Total investment return
  */
+
 
 import type { AnnualData } from './simulationProjection';
 import { getYearlyDepreciation, type DepreciationInfo } from './taxCalculations';
@@ -110,6 +120,8 @@ export const calculateExitAnalysis = (
     landPrice: number,             // 円
     ownCapital: number,            // 円
     depInfo: DepreciationInfo,
+    isLeaseMode: boolean = false,  // [修正] QA部の指摘: 借地リースモード判定
+    landLeaseDeposit: number = 0,  // [修正] QA部の指摘: 土地敷金 (円)
 ): ExitAnalysis => {
     const saleYearData = projection.find(p => p.year === saleYear);
     if (!saleYearData) {
@@ -141,11 +153,12 @@ export const calculateExitAnalysis = (
         accumulatedDepreciation,
         saleExpenses.total,
         saleYear,
-        landPrice,
+        isLeaseMode ? 0 : landPrice, // [修正] QA部の指摘: 借地リース時は土地の所有権がないため土地の取得費は0円で計算
     );
 
     // Net sale proceeds
-    const netSaleProceeds = salePrice - loanBalanceAtSale - saleExpenses.total - capitalGainsTax;
+    // [修正] QA部の指摘: 借地リース時は地主に預けていた土地敷金がExit時に全額返還され、キャッシュフローに加算されます
+    const netSaleProceeds = salePrice - loanBalanceAtSale - saleExpenses.total - capitalGainsTax + (isLeaseMode ? landLeaseDeposit : 0);
 
     // Total cashflow during holding period
     const totalCashflowDuringHolding = projection
@@ -188,8 +201,10 @@ export const generateExitTable = (
     ownCapital: number,
     depInfo: DepreciationInfo,
     yearsToAnalyze: number[] = [5, 10, 15, 20, 25, 30],
+    isLeaseMode: boolean = false,
+    landLeaseDeposit: number = 0,
 ): ExitAnalysis[] => {
     return yearsToAnalyze.map(year =>
-        calculateExitAnalysis(projection, year, exitCapRate, originalBuildingCost, landPrice, ownCapital, depInfo)
+        calculateExitAnalysis(projection, year, exitCapRate, originalBuildingCost, landPrice, ownCapital, depInfo, isLeaseMode, landLeaseDeposit)
     );
 };

@@ -1,7 +1,17 @@
+/**
+ * ============================================================
+ *  AI組織型コードレビュー済み
+ *  レビュー日: 2026-06-01
+ *  レビュー部署: バグチェック部 / セキュリティ部 / 改善提案部
+ *  統合修正: 開発部
+ * ============================================================
+ */
+
 import React from 'react';
 import { useSimulationStore } from '../stores/useSimulationStore';
 import type { RoomType } from '../stores/useSimulationStore';
 import { Card } from '../components/ui/Card';
+
 import { InputGroup } from '../components/ui/InputGroup';
 import { Button } from '../components/ui/Button';
 import { ChevronRight, ArrowLeft, Plus, Trash2 } from 'lucide-react';
@@ -68,7 +78,7 @@ export const Screen4_RentRoll: React.FC = () => {
         }
 
         // 用途に応じた自動予測（オートコンプリート）用の選択リストID
-        const listId = `room-suggestions-${titleLabel === '住居系' ? 'res' : 'comm'}`;
+
 
         return (
             <div className="overflow-x-auto rounded-xl border border-slate-100 shadow-sm bg-white">
@@ -412,11 +422,25 @@ export const Screen4_RentRoll: React.FC = () => {
                     </div>
 
                     {data.mode === 'land_lease' && (
-                        <div className="bg-emerald-600 text-white p-6 rounded-xl shadow-lg">
-                            <span className="text-emerald-100 text-sm uppercase tracking-wider font-bold">建設協力金 調達総額</span>
-                            <div className="text-3xl font-bold mt-1">{formatManYen(totalCooperationMoney / 10000)} 万円</div>
-                            <p className="text-sm text-emerald-200 mt-2">
-                                テナントから無利息で預かり、初期建築資金に充当されます。設定された返還期間で均等返還されます。
+                        <div className="bg-gradient-to-br from-emerald-600 to-teal-700 text-white p-6 rounded-2xl shadow-xl space-y-4">
+                            <div>
+                                <span className="text-emerald-100 text-xs uppercase tracking-wider font-bold">建設協力金 調達総額</span>
+                                <div className="text-4xl font-extrabold mt-1 font-mono">{formatManYen(totalCooperationMoney / 10000)} 万円</div>
+                            </div>
+                            <div className="space-y-1">
+                                <div className="flex justify-between text-xs text-emerald-100">
+                                    <span>建物本体工事費（{formatManYen(data.budget.buildingWorksCost)}万円）に対する補填率</span>
+                                    <span className="font-bold">{(data.budget.buildingWorksCost > 0 ? (totalCooperationMoney / (data.budget.buildingWorksCost * 10000) * 100) : 0).toFixed(1)}%</span>
+                                </div>
+                                <div className="w-full bg-emerald-800/60 rounded-full h-2 overflow-hidden">
+                                    <div 
+                                        className="bg-emerald-300 h-full rounded-full transition-all duration-500 ease-out"
+                                        style={{ width: `${Math.min(100, data.budget.buildingWorksCost > 0 ? (totalCooperationMoney / (data.budget.buildingWorksCost * 10000) * 100) : 0)}%` }}
+                                    />
+                                </div>
+                            </div>
+                            <p className="text-xs text-emerald-100 leading-relaxed bg-emerald-800/20 p-2.5 rounded-lg">
+                                💡 テナントから預かる建設協力金で、本体工事費の約 <span className="font-bold text-white">{(data.budget.buildingWorksCost > 0 ? (totalCooperationMoney / (data.budget.buildingWorksCost * 10000) * 100) : 0).toFixed(0)}%</span> を金利・返済負担なしで調達できています。
                             </p>
                         </div>
                     )}

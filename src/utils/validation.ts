@@ -122,3 +122,23 @@ export const hasStepErrors = (data: SimulationData, step: number): boolean => {
     }
     return Object.keys(errors).length > 0;
 };
+
+/**
+ * [修正] セキュリティ部署の指摘: XSS対策のためのURL検証・サニタイズ関数
+ * http: または https: で始まる妥当なURLのみを通過させ、それ以外はundefinedを返します。
+ */
+export const validateAndSanitizeUrl = (url?: string): string | undefined => {
+    if (!url) return undefined;
+    const trimmed = url.trim();
+    if (!trimmed) return undefined;
+    try {
+        const parsed = new URL(trimmed);
+        if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+            return trimmed;
+        }
+    } catch {
+        // URLパースエラーの場合は不正なURLとして扱う
+    }
+    return undefined;
+};
+
