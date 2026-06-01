@@ -412,16 +412,16 @@ export const Screen4_RentRoll: React.FC = () => {
                     </div>
                 </Card>
 
-                <div className={`grid gap-6 ${data.mode === 'land_lease' ? 'md:grid-cols-2' : ''}`}>
-                    <div className="bg-indigo-600 text-white p-6 rounded-xl shadow-lg">
+                <div className="grid gap-6 md:grid-cols-2">
+                    <div className="bg-indigo-600 text-white p-6 rounded-2xl shadow-lg">
                         <span className="text-indigo-100 text-sm uppercase tracking-wider font-bold">年間満室想定収入 (Gross Potential Income)</span>
-                        <div className="text-3xl font-bold mt-1">{formatManYen(annualPotentialGrossIncome / 10000)} 万円</div>
+                        <div className="text-3xl font-bold mt-1">{(annualPotentialGrossIncome / 10000).toLocaleString(undefined, { maximumFractionDigits: 1 })} 万円</div>
                         <p className="text-sm text-indigo-200 mt-2">
                             月額: {(grossMonthlyIncome + data.rentRoll.otherRevenue + (data.rentRoll.solarPowerIncome || 0)).toLocaleString()} 円 × 12ヶ月
                         </p>
                     </div>
 
-                    {data.mode === 'land_lease' && (
+                    {data.mode === 'land_lease' ? (
                         <div className="bg-gradient-to-br from-emerald-600 to-teal-700 text-white p-6 rounded-2xl shadow-xl space-y-4">
                             <div>
                                 <span className="text-emerald-100 text-xs uppercase tracking-wider font-bold">建設協力金 調達総額</span>
@@ -441,6 +441,26 @@ export const Screen4_RentRoll: React.FC = () => {
                             </div>
                             <p className="text-xs text-emerald-100 leading-relaxed bg-emerald-800/20 p-2.5 rounded-lg">
                                 💡 テナントから預かる建設協力金で、本体工事費の約 <span className="font-bold text-white">{(data.budget.buildingWorksCost > 0 ? (totalCooperationMoney / (data.budget.buildingWorksCost * 10000) * 100) : 0).toFixed(0)}%</span> を金利・返済負担なしで調達できています。
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="bg-gradient-to-br from-amber-600 to-orange-700 text-white p-6 rounded-2xl shadow-xl space-y-4">
+                            <div>
+                                <span className="text-amber-100 text-xs uppercase tracking-wider font-bold">想定表面利回り (Gross Yield)</span>
+                                <div className="text-4xl font-extrabold mt-1 font-mono">
+                                    {((data.budget.landPrice || 0) + (data.budget.buildingWorksCost || 0) > 0)
+                                        ? (annualPotentialGrossIncome / (((data.budget.landPrice || 0) + (data.budget.buildingWorksCost || 0) + (data.budget.demolitionCost || 0) + (data.budget.otherInitialCost || 0)) * 10000) * 100).toFixed(2)
+                                        : '0.00'}%
+                                </div>
+                            </div>
+                            <div className="space-y-1">
+                                <div className="flex justify-between text-xs text-amber-100">
+                                    <span>総初期コストに対する満室時年間家賃の割合</span>
+                                    <span>総投資額: {(((data.budget.landPrice || 0) + (data.budget.buildingWorksCost || 0) + (data.budget.demolitionCost || 0) + (data.budget.otherInitialCost || 0))).toLocaleString()} 万円</span>
+                                </div>
+                            </div>
+                            <p className="text-xs text-amber-100 leading-relaxed bg-amber-800/20 p-2.5 rounded-lg">
+                                💡 表面利回りは、年間家賃収入を「総事業費（土地代・工事費・諸経費）」で割った目安の指標です。実際の手残りを表すNOI利回りは、次の結果画面で詳しく分析します。
                             </p>
                         </div>
                     )}

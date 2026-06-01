@@ -136,7 +136,7 @@ export const Screen2_Budget: React.FC = () => {
                             />
                         ) : (
                             <InputGroup
-                                label={isLandMode ? "土地購入費" : "建築費 (土地・建物含む)"}
+                                label={isLandMode ? "土地購入費" : "物件購入価格 (土地・建物総額)"}
                                 type="number"
                                 unit="万円"
                                 value={data.budget.landPrice || ''}
@@ -225,14 +225,16 @@ export const Screen2_Budget: React.FC = () => {
                             value={data.budget.fireInsurancePrepaid || ''}
                             onChange={(e) => updateBudget({ fireInsurancePrepaid: parseFloat(e.target.value) || 0 })}
                         />
-                        <InputGroup
-                            label="市納金 (水道分担金等)"
-                            type="number"
-                            unit="万円"
-                            help="地方自治体等へ支払う水道負担金などの市納金です。"
-                            value={data.budget.waterContribution || ''}
-                            onChange={(e) => updateBudget({ waterContribution: parseFloat(e.target.value) || 0 })}
-                        />
+                        {(isLandMode || isLeaseMode) && (
+                            <InputGroup
+                                label="市納金 (水道分担金等)"
+                                type="number"
+                                unit="万円"
+                                help="地方自治体等へ支払う水道負担金などの市納金です。"
+                                value={data.budget.waterContribution || ''}
+                                onChange={(e) => updateBudget({ waterContribution: parseFloat(e.target.value) || 0 })}
+                            />
+                        )}
                         <InputGroup
                             label="その他諸経費"
                             type="number"

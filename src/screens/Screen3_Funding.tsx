@@ -62,7 +62,7 @@ export const Screen3_Funding: React.FC = () => {
 
             <div className="grid gap-6">
                 <Card title="自己資金・その他">
-                    <div className="grid md:grid-cols-3 gap-6">
+                    <div className={`grid gap-6 ${isLeaseMode ? 'md:grid-cols-3' : 'md:grid-cols-1'}`}>
                         <InputGroup
                             label="自己資金"
                             type="number"
@@ -70,24 +70,24 @@ export const Screen3_Funding: React.FC = () => {
                             value={data.funding.ownCapital || ''}
                             onChange={(e) => updateFunding({ ownCapital: parseFloat(e.target.value) || 0 })}
                         />
-                        <InputGroup
-                            label="建設協力金"
-                            type="number"
-                            unit="万円"
-                            value={data.funding.cooperationMoney || ''}
-                            onChange={(e) => updateFunding({ cooperationMoney: parseFloat(e.target.value) || 0 })}
-                        />
-                        {/* Note: Security Deposit (Tenant) is usually liabilities but treated as cash inflow for construction? 
-                   Req says "預り金". Usually tenant deposits come AFTER completion. 
-                   But maybe owner puts in advanced tenant deposits? 
-                   Or this is effectively "Loan from Tenant". */}
-                        <InputGroup
-                            label="敷金 (預り金)"
-                            type="number"
-                            unit="万円"
-                            value={data.funding.securityDepositIn || ''}
-                            onChange={(e) => updateFunding({ securityDepositIn: parseFloat(e.target.value) || 0 })}
-                        />
+                        {isLeaseMode && (
+                            <>
+                                <InputGroup
+                                    label="建設協力金"
+                                    type="number"
+                                    unit="万円"
+                                    value={data.funding.cooperationMoney || ''}
+                                    onChange={(e) => updateFunding({ cooperationMoney: parseFloat(e.target.value) || 0 })}
+                                />
+                                <InputGroup
+                                    label="敷金 (預り金)"
+                                    type="number"
+                                    unit="万円"
+                                    value={data.funding.securityDepositIn || ''}
+                                    onChange={(e) => updateFunding({ securityDepositIn: parseFloat(e.target.value) || 0 })}
+                                />
+                            </>
+                        )}
                     </div>
                 </Card>
 

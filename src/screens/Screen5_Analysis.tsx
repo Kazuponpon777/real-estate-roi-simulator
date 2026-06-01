@@ -8,7 +8,7 @@
  */
 
 import React, { useMemo } from 'react';
-import { useSimulationStore } from '../stores/useSimulationStore';
+import { useSimulationStore, type SimulationMode } from '../stores/useSimulationStore';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { ArrowLeft, FileText, Download, Upload, Save, FileJson, LineChart as LineChartIcon, TrendingUp } from 'lucide-react';
@@ -36,6 +36,95 @@ import { IncomeExpensePage } from '../components/report/IncomeExpensePage';
 import { ChartPage } from '../components/report/ChartPage';
 import { CashFlowPage } from '../components/report/CashFlowPage';
 import { AppendicesPage } from '../components/report/AppendicesPage';
+
+// ============================================================
+// 【ダイナミック表示】モード別・スマートAIコンサルバナー
+// ============================================================
+const ModeConsultantBanner: React.FC<{ mode: SimulationMode }> = ({ mode }) => {
+    let title = '';
+    let description = '';
+    let advicePoints: string[] = [];
+    let bgClass = '';
+    let borderClass = '';
+    let tagText = '';
+    let tagClass = '';
+
+    if (mode === 'land_new') {
+        title = '新築・土地活用スキーム診断';
+        tagText = '長期・資産形成型';
+        tagClass = 'bg-indigo-100 text-indigo-800 border-indigo-200';
+        bgClass = 'bg-gradient-to-r from-indigo-50/70 to-blue-50/70';
+        borderClass = 'border-indigo-100';
+        description = '更地からのアパート・マンション新築は、長期安定収入と相続税対策の決定版です。最新設備で高い入居率を維持できます。';
+        advicePoints = [
+            '【利回り改善】建築本体コストの精査と、間取りごとの想定坪賃料の最大化が鍵となります。',
+            '【デッドクロス注意】15年〜20年目の建物附属設備の減価償却終了による税負担増に備え、手残りをプールしておきましょう。',
+            '【融資計画】長期固定金利のローンを組むことで、金利上昇局面でのリスクをヘッジできます。'
+        ];
+    } else if (mode === 'investment_used') {
+        title = '中古物件・短期償却スピード節税診断';
+        tagText = '高利回り・節税特化型';
+        tagClass = 'bg-amber-100 text-amber-800 border-amber-200';
+        bgClass = 'bg-gradient-to-r from-amber-50/70 to-orange-50/70';
+        borderClass = 'border-amber-100';
+        description = '既存の建物付き物件を購入するスキームです。築古木造等では、簡便法により4〜5年で超スピード償却（毎年の減価償却費の極大化）を狙えます。';
+        advicePoints = [
+            '【デッドクロス激突】償却終了後は一気に帳簿上の経費が減り、税務上の黒字（所得税負担）が跳ね上がります。償却切れ前の売却（Exit）が定石です。',
+            '【修繕リスク】築年数が古いため、給排水管や大規模修繕等のスポット経費の発生に備えた余裕のある積立金が必須です。',
+            '【減価償却の最大化】建物購入費のうち「建物附属設備」の割合を多めに計上することで、初期のキャッシュをさらに厚くできます。'
+        ];
+    } else if (mode === 'land_lease') {
+        title = '借地リース・超高効率レバレッジ診断';
+        tagText = '他人資本・超高利回り型';
+        tagClass = 'bg-emerald-100 text-emerald-800 border-emerald-200';
+        bgClass = 'bg-gradient-to-r from-emerald-50/70 to-teal-50/70';
+        borderClass = 'border-emerald-100';
+        description = '地主から借地し、建築費をテナント（コンビニ等の実需店舗）から預かる無利息の「建設協力金」で全額または大半を調達する、知的な極上ビジネススキームです。';
+        advicePoints = [
+            '【レバレッジの極み】土地購入代金が0円、かつ建築費の多くをテナント資金で賄えるため、自己資金に対するキャッシュ回収率（IRR/CCR）は不動産投資中ダントツNo.1です。',
+            '【Exit注意】借地期間（通常20年〜30年）満了時には、原則として「建物更地渡し（更地にして返還）」する義務があります。最終年に建物解体費用がスポットで発生し、Exit売却額は0円（または更地化マイナス）になる前提で手残りCFを組み立てましょう。',
+            '【地代調整】地主へ支払う月額地代は固定費（経費）になります。地代と家賃収入の差額（利ざや）の維持・拡大が収益の源泉です。'
+        ];
+    }
+
+    return (
+        <div className={`p-6 rounded-3xl border-2 backdrop-blur-md shadow-sm no-print mb-6 ${bgClass} ${borderClass}`}>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+                <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-2xl bg-white flex items-center justify-center shadow-sm text-xl">
+                        🤖
+                    </div>
+                    <div>
+                        <h4 className="font-extrabold text-slate-800 text-lg flex items-center gap-2">
+                            {title}
+                        </h4>
+                        <p className="text-xs text-slate-500 mt-0.5 font-medium">モード別・AIスマートコンサル診断</p>
+                    </div>
+                </div>
+                <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold ${tagClass}`}>
+                    {tagText}
+                </span>
+            </div>
+            
+            <p className="text-slate-600 text-sm leading-relaxed mb-4 border-b border-slate-100/50 pb-4">
+                {description}
+            </p>
+
+            <div className="grid md:grid-cols-3 gap-4">
+                {advicePoints.map((point, idx) => (
+                    <div key={idx} className="bg-white/90 p-4 rounded-2xl shadow-sm border border-slate-100/60">
+                        <span className="text-xs font-extrabold text-indigo-600 block mb-1">
+                            ADVICE {idx + 1}
+                        </span>
+                        <p className="text-slate-700 text-xs leading-relaxed font-medium">
+                            {point}
+                        </p>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
 
 export const Screen5_Analysis: React.FC = () => {
     const { data, updateData, updateAdvancedSettings, prevStep } = useSimulationStore();
@@ -324,6 +413,11 @@ export const Screen5_Analysis: React.FC = () => {
                         </div>
                     </div>
                 </Card>
+
+                {/* AIコンサルバナー */}
+                <div className="md:col-span-3">
+                    <ModeConsultantBanner mode={data.mode} />
+                </div>
 
                 {/* KPIS */}
                 <Card className="md:col-span-3 border-emerald-100 !bg-white !bg-none shadow-lg">

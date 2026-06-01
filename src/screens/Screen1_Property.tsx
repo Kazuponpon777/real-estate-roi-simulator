@@ -15,6 +15,10 @@ export const Screen1_Property: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'land' | 'building'>('land');
     const [errors, setErrors] = useState<ValidationErrors>({});
 
+    const isLandMode = data.mode === 'land_new';
+    const isLeaseMode = data.mode === 'land_lease';
+    const isUsedMode = data.mode === 'investment_used';
+
     const handleNext = () => {
         const validationErrors = validateProperty(data);
         if (Object.keys(validationErrors).length > 0) {
@@ -113,152 +117,182 @@ export const Screen1_Property: React.FC = () => {
                                 />
                             </div>
 
+                            {/* 【ダイナミック表示】敷地面積の入力基準・間口奥行は新築(land_new)のみ表示 */}
+                            {isLandMode && (
+                                <div className="md:col-span-2 grid md:grid-cols-2 gap-6 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                    <div className="space-y-4">
+                                        <label className="text-sm font-semibold text-slate-600">敷地面積の入力基準</label>
+                                        <div className="flex gap-4">
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="radio"
+                                                    checked={data.property.landAreaMode === 'public'}
+                                                    onChange={() => updateProperty({ landAreaMode: 'public' })}
+                                                    className="text-blue-600 focus:ring-blue-500"
+                                                />
+                                                <span className="text-sm text-slate-700">公簿面積</span>
+                                            </label>
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="radio"
+                                                    checked={data.property.landAreaMode === 'actual'}
+                                                    onChange={() => updateProperty({ landAreaMode: 'actual' })}
+                                                    className="text-blue-600 focus:ring-blue-500"
+                                                />
+                                                <span className="text-sm text-slate-700">実測面積</span>
+                                            </label>
+                                        </div>
 
-                            <div className="md:col-span-2 grid md:grid-cols-2 gap-6 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                                <div className="space-y-4">
-                                    <label className="text-sm font-semibold text-slate-600">敷地面積の入力基準</label>
-                                    <div className="flex gap-4">
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input
-                                                type="radio"
-                                                checked={data.property.landAreaMode === 'public'}
-                                                onChange={() => updateProperty({ landAreaMode: 'public' })}
-                                                className="text-blue-600 focus:ring-blue-500"
-                                            />
-                                            <span className="text-sm text-slate-700">公簿面積</span>
-                                        </label>
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input
-                                                type="radio"
-                                                checked={data.property.landAreaMode === 'actual'}
-                                                onChange={() => updateProperty({ landAreaMode: 'actual' })}
-                                                className="text-blue-600 focus:ring-blue-500"
-                                            />
-                                            <span className="text-sm text-slate-700">実測面積</span>
-                                        </label>
+                                        <InputGroup
+                                            label="敷地面積 (㎡)"
+                                            type="number"
+                                            unit="㎡"
+                                            help="登記簿または実測による敷地の面積。建蔽率・容積率の計算基礎になります"
+                                            value={data.property.landAreaM2 || ''}
+                                            onChange={(e) => {
+                                                const val = parseFloat(e.target.value);
+                                                updateLandM2(isNaN(val) ? 0 : val);
+                                            }}
+                                        />
+                                        <div className="text-right text-sm text-slate-500">
+                                            ≒ {(data.property.landAreaM2 ? data.property.landAreaM2 / TSUBO_TO_M2 : 0).toFixed(2)} 坪
+                                        </div>
                                     </div>
 
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <InputGroup
+                                                label="間口"
+                                                type="number"
+                                                unit="m"
+                                                value={data.property.frontage || ''}
+                                                onChange={(e) => {
+                                                    const val = parseFloat(e.target.value);
+                                                    updateProperty({ frontage: isNaN(val) ? 0 : val });
+                                                }}
+                                            />
+                                            <InputGroup
+                                                label="奥行"
+                                                type="number"
+                                                unit="m"
+                                                value={data.property.depth || ''}
+                                                onChange={(e) => {
+                                                    const val = parseFloat(e.target.value);
+                                                    updateProperty({ depth: isNaN(val) ? 0 : val });
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 借地リースや中古では、単純な敷地面積の入力欄のみを表示（すっきり化） */}
+                            {!isLandMode && (
+                                <div className="md:col-span-2 p-4 bg-slate-50 rounded-xl border border-slate-100 grid md:grid-cols-2 gap-6 items-center">
                                     <InputGroup
                                         label="敷地面積 (㎡)"
                                         type="number"
                                         unit="㎡"
-                                        help="登記簿または実測による敷地の面積。建蔽率・容積率の計算基礎になります"
+                                        help="敷地の登録面積です。"
                                         value={data.property.landAreaM2 || ''}
                                         onChange={(e) => {
                                             const val = parseFloat(e.target.value);
                                             updateLandM2(isNaN(val) ? 0 : val);
                                         }}
                                     />
-                                    <div className="text-right text-sm text-slate-500">
-                                        ≒ {(data.property.landAreaM2 ? data.property.landAreaM2 / TSUBO_TO_M2 : 0).toFixed(2)} 坪
+                                    <div className="text-left text-sm text-slate-500 mt-6">
+                                        坪数換算: <span className="font-bold text-slate-700">{(data.property.landAreaM2 ? data.property.landAreaM2 / TSUBO_TO_M2 : 0).toFixed(2)}</span> 坪
                                     </div>
                                 </div>
+                            )}
 
-                                <div className="space-y-4">
+                            {/* 【ダイナミック表示】道路付けは新築(land_new)のみ表示 */}
+                            {isLandMode && (
+                                <div className="md:col-span-2 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                    <h4 className="text-sm font-bold text-slate-700 mb-4">道路付け</h4>
+                                    <div className="grid md:grid-cols-3 gap-4">
+                                        <div className="space-y-1.5">
+                                            <label className="text-sm font-semibold text-slate-600">種類</label>
+                                            <select
+                                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                                value={data.property.roadType1}
+                                                onChange={(e) => updateProperty({ roadType1: e.target.value })}
+                                            >
+                                                <option value="公道">公道</option>
+                                                <option value="私道">私道</option>
+                                                <option value="県道">県道</option>
+                                                <option value="市道">市道</option>
+                                            </select>
+                                        </div>
+                                        <InputGroup
+                                            label="方位"
+                                            placeholder="例: 南側"
+                                            value={data.property.roadDirection1}
+                                            onChange={(e) => updateProperty({ roadDirection1: e.target.value })}
+                                        />
+                                        <InputGroup
+                                            label="幅員"
+                                            type="number"
+                                            unit="m"
+                                            value={data.property.roadWidth1 || ''}
+                                            onChange={(e) => {
+                                                const val = parseFloat(e.target.value);
+                                                updateProperty({ roadWidth1: isNaN(val) ? 0 : val });
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 【ダイナミック表示】用途地域や建蔽率・容積率は新築(land_new)と借地(land_lease)（建築計画を伴うモード）のみ表示 */}
+                            {(isLandMode || isLeaseMode) && (
+                                <>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1.5">
+                                            <label className="text-sm font-semibold text-slate-600">都市計画区域</label>
+                                            <select
+                                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                                value={data.property.urbanizationArea}
+                                                onChange={(e) => updateProperty({ urbanizationArea: e.target.value as any })}
+                                            >
+                                                <option value="urbanization">市街化区域</option>
+                                                <option value="adjustment">市街化調整区域</option>
+                                            </select>
+                                        </div>
+                                        <InputGroup
+                                            label="用途地域"
+                                            placeholder="例: 第一種住居"
+                                            value={data.property.zoning}
+                                            onChange={(e) => updateProperty({ zoning: e.target.value })}
+                                        />
+                                    </div>
+
                                     <div className="grid grid-cols-2 gap-4">
                                         <InputGroup
-                                            label="間口"
+                                            label="建蔽率"
                                             type="number"
-                                            unit="m"
-                                            value={data.property.frontage || ''}
+                                            unit="%"
+                                            help="敷地面積に対する建築面積の割合。用途地域ごとに上限が定められています"
+                                            value={data.property.coverageRate || ''}
                                             onChange={(e) => {
                                                 const val = parseFloat(e.target.value);
-                                                updateProperty({ frontage: isNaN(val) ? 0 : val });
+                                                updateProperty({ coverageRate: isNaN(val) ? 0 : val });
                                             }}
                                         />
                                         <InputGroup
-                                            label="奥行"
+                                            label="容積率"
                                             type="number"
-                                            unit="m"
-                                            value={data.property.depth || ''}
+                                            unit="%"
+                                            help="敷地面積に対する延床面積の上限割合。建物ボリュームの上限を決めます"
+                                            value={data.property.floorAreaRate || ''}
                                             onChange={(e) => {
                                                 const val = parseFloat(e.target.value);
-                                                updateProperty({ depth: isNaN(val) ? 0 : val });
+                                                updateProperty({ floorAreaRate: isNaN(val) ? 0 : val });
                                             }}
                                         />
                                     </div>
-                                </div>
-                            </div>
-
-                            <div className="md:col-span-2 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                                <h4 className="text-sm font-bold text-slate-700 mb-4">道路付け</h4>
-                                <div className="grid md:grid-cols-3 gap-4">
-                                    <div className="space-y-1.5">
-                                        <label className="text-sm font-semibold text-slate-600">種類</label>
-                                        <select
-                                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                                            value={data.property.roadType1}
-                                            onChange={(e) => updateProperty({ roadType1: e.target.value })}
-                                        >
-                                            <option value="公道">公道</option>
-                                            <option value="私道">私道</option>
-                                            <option value="県道">県道</option>
-                                            <option value="市道">市道</option>
-                                        </select>
-                                    </div>
-                                    <InputGroup
-                                        label="方位"
-                                        placeholder="例: 南側"
-                                        value={data.property.roadDirection1}
-                                        onChange={(e) => updateProperty({ roadDirection1: e.target.value })}
-                                    />
-                                    <InputGroup
-                                        label="幅員"
-                                        type="number"
-                                        unit="m"
-                                        value={data.property.roadWidth1 || ''}
-                                        onChange={(e) => {
-                                            const val = parseFloat(e.target.value);
-                                            updateProperty({ roadWidth1: isNaN(val) ? 0 : val });
-                                        }}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1.5">
-                                    <label className="text-sm font-semibold text-slate-600">都市計画区域</label>
-                                    <select
-                                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                                        value={data.property.urbanizationArea}
-                                        onChange={(e) => updateProperty({ urbanizationArea: e.target.value as any })}
-                                    >
-                                        <option value="urbanization">市街化区域</option>
-                                        <option value="adjustment">市街化調整区域</option>
-                                    </select>
-                                </div>
-                                <InputGroup
-                                    label="用途地域"
-                                    placeholder="例: 第一種住居"
-                                    value={data.property.zoning}
-                                    onChange={(e) => updateProperty({ zoning: e.target.value })}
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <InputGroup
-                                    label="建蔽率"
-                                    type="number"
-                                    unit="%"
-                                    help="敷地面積に対する建築面積の割合。用途地域ごとに上限が定められています"
-                                    value={data.property.coverageRate || ''}
-                                    onChange={(e) => {
-                                        const val = parseFloat(e.target.value);
-                                        updateProperty({ coverageRate: isNaN(val) ? 0 : val });
-                                    }}
-                                />
-                                <InputGroup
-                                    label="容積率"
-                                    type="number"
-                                    unit="%"
-                                    help="敷地面積に対する延床面積の上限割合。建物ボリュームの上限を決めます"
-                                    value={data.property.floorAreaRate || ''}
-                                    onChange={(e) => {
-                                        const val = parseFloat(e.target.value);
-                                        updateProperty({ floorAreaRate: isNaN(val) ? 0 : val });
-                                    }}
-                                />
-                            </div>
+                                </>
+                            )}
                         </div>
 
                         <div className="border-t border-slate-100 pt-6 mt-6 space-y-6">
@@ -350,19 +384,29 @@ export const Screen1_Property: React.FC = () => {
                                 }}
                             />
 
-                            {/* 【設計漏れ修正】中古物件モードの際、築年数（減価償却の算出基礎）を入力できるようにUIを追加 */}
-                            {data.mode === 'investment_used' && (
-                                <InputGroup
-                                    label="築年数"
-                                    type="number"
-                                    unit="年"
-                                    help="物件の築年数。これに基づいて中古の「簡便法（残存耐用年数）」が自動計算されます。"
-                                    value={data.advancedSettings?.buildingAge || ''}
-                                    onChange={(e) => {
-                                        const val = parseFloat(e.target.value);
-                                        updateAdvancedSettings({ buildingAge: isNaN(val) ? 0 : val });
-                                    }}
-                                />
+                            {/* 【中古物件専用】築年数（減価償却の算出基礎）を特別ハイライト表示 */}
+                            {isUsedMode && (
+                                <div className="md:col-span-2 p-5 bg-amber-50/50 rounded-2xl border border-amber-200/60 shadow-sm space-y-3">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs font-bold text-amber-800 uppercase tracking-wider bg-amber-100 px-2 py-0.5 rounded-full">
+                                            中古シミュレーションの超重要項目
+                                        </span>
+                                    </div>
+                                    <InputGroup
+                                        label="物件の築年数"
+                                        type="number"
+                                        unit="年"
+                                        help="築年数に基づき、中古資産の「簡便法（残存耐用年数）」が自動計算され、毎年の減価償却費と所得税節税効果が算出されます。"
+                                        value={data.advancedSettings?.buildingAge || ''}
+                                        onChange={(e) => {
+                                            const val = parseFloat(e.target.value);
+                                            updateAdvancedSettings({ buildingAge: isNaN(val) ? 0 : val });
+                                        }}
+                                    />
+                                    <p className="text-[11px] text-amber-700 leading-relaxed">
+                                        💡 構造（RC:47年、S:34年、木造:22年）の法定耐用年数を超えている場合でも、「法定耐用年数 × 20%」が償却期間として適用されます。
+                                    </p>
+                                </div>
                             )}
                         </div>
                     </Card>
