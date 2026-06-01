@@ -7,6 +7,7 @@ import {
     calculateCorporateTax,
     type DepreciationInfo,
 } from "./taxCalculations";
+import { calculateExitAnalysis } from "./exitStrategy";
 
 export interface AnnualData {
     year: number;
@@ -38,28 +39,38 @@ export const calculateLongTermProjection = (data: SimulationData, years: number 
     const ownCapitalYen = data.funding.ownCapital * 10000;
     let currentAccumulatedCF = -ownCapitalYen;
 
-    // --- Depreciation Setup ---
-    const buildingCostYen = data.budget.buildingWorksCost * 10000;
     const isUsed = data.mode === 'investment_used';
+
+    // --- 建物価格の決定 ---
+    // 中古物件の場合は、購入価格(landPrice)に建物割合を掛けて建物価格を算出。新築の場合は本体工事費を使用。
+    const buildingCostYen = isUsed
+        ? (data.budget.landPrice * (data.advancedSettings?.buildingRatio ?? 50) / 100) * 10000
+        : data.budget.buildingWorksCost * 10000;
+
     const equipmentRatio = data.advancedSettings?.equipmentRatio ?? 0.2;
     const buildingAge = data.advancedSettings?.buildingAge ?? 0;
+    const usefulLifeMethod = data.advancedSettings?.usefulLifeMethod ?? 'simplified';
 
+    // 減価償却費の計算 (耐用年数算出方法とカスタム入力に対応)
     const depInfo: DepreciationInfo = calculateDepreciation(
         data.property.structure,
         buildingCostYen,
         equipmentRatio,
         isUsed,
         buildingAge,
+        usefulLifeMethod,
+        data.advancedSettings?.customBuildingUsefulLife,
+        data.advancedSettings?.customEquipmentUsefulLife
     );
 
-    // --- Tax Settings ---
+    // --- 税務設定 ---
     const taxMode = data.advancedSettings?.taxMode ?? 'individual';
     const otherIncome = data.advancedSettings?.otherIncome ?? 0;
 
-    // --- Interest Rate Rise ---
+    // --- 金利上昇率 ---
     const interestRateRise = data.advancedSettings?.interestRateRise ?? 0;
 
-    // --- Loan States ---
+    // --- ローンの初期状態 ---
     let loans = data.funding.loans.map(loan => ({
         ...loan,
         remainingBalance: loan.amount * 10000,
@@ -71,14 +82,14 @@ export const calculateLongTermProjection = (data: SimulationData, years: number 
         yearPrincipal: 0
     }));
 
-    // --- Base Income ---
+    // --- 満室想定の年額潜在総収入 (GPI) ---
     const annualPotentialGrossIncome =
         ((data.rentRoll.roomTypes.reduce((acc, r) => acc + (r.rent + r.commonFee) * r.count, 0) +
             (data.rentRoll.parkingCount * data.rentRoll.parkingFee) +
             (data.rentRoll.solarPowerIncome || 0) +
             data.rentRoll.otherRevenue) * 12);
 
-    // --- Fixed OPEX ---
+    // --- 固定運営費 (OPEX) ---
     const fixedOpexPart =
         (data.expenses.buildingMaintenance * 12) +
         (data.expenses.maintenanceReserve * 12) +
@@ -90,12 +101,17 @@ export const calculateLongTermProjection = (data: SimulationData, years: number 
         data.expenses.otherExpenses;
 
     for (let y = 1; y <= years; y++) {
-        // === 1. Income ===
+        // === 1. 収入計算 ===
         const rentDeclineRate = data.advancedSettings?.rentDeclineRate ?? 1.0;
         const vacancyRiseRate = data.advancedSettings?.vacancyRiseRate ?? 0.5;
 
         const currentYearGrossIncome = annualPotentialGrossIncome * Math.pow(1 - rentDeclineRate / 100, y - 1);
-        const baseVacancyRate = data.rentRoll.occupancyRate ? (100 - data.rentRoll.occupancyRate) : 5.0;
+        
+        // 【論理バグ修正】想定入居率が 0% の場合でも正しく動作するように、undefined または null のみを厳密判定
+        const baseVacancyRate = (data.rentRoll.occupancyRate !== undefined && data.rentRoll.occupancyRate !== null)
+            ? (100 - data.rentRoll.occupancyRate)
+            : 5.0;
+            
         let currentVacancyRate = baseVacancyRate + (vacancyRiseRate * (y - 1));
         if (currentVacancyRate > 100) currentVacancyRate = 100;
 
@@ -261,23 +277,67 @@ export const getInvestmentMetrics = (
     projection: AnnualData[],
 ) => {
     const ownCapitalYen = data.funding.ownCapital * 10000;
+    const finalYear = projection[projection.length - 1];
 
-    // IRR cashflows: [-equity, atcf1, atcf2, ..., atcfN]
+    // --- 最終年の想定売却手取り(Net Sale Proceeds)を計算 ---
+    let netSaleProceeds = 0;
+    if (finalYear) {
+        const exitCapRate = data.advancedSettings?.exitCapRate ?? 6.0;
+        const isUsed = data.mode === 'investment_used';
+        
+        // 建物・土地の按分コスト (中古物件と新築物件のバグを修正)
+        const buildingCost = isUsed
+            ? (data.budget.landPrice * (data.advancedSettings?.buildingRatio ?? 50) / 100) * 10000
+            : data.budget.buildingWorksCost * 10000;
+        const landCost = isUsed
+            ? (data.budget.landPrice * (100 - (data.advancedSettings?.buildingRatio ?? 50)) / 100) * 10000
+            : data.budget.landPrice * 10000;
+
+        const depInfo: DepreciationInfo = calculateDepreciation(
+            data.property.structure,
+            buildingCost,
+            data.advancedSettings?.equipmentRatio ?? 0.2,
+            isUsed,
+            data.advancedSettings?.buildingAge ?? 0,
+            data.advancedSettings?.usefulLifeMethod ?? 'simplified',
+            data.advancedSettings?.customBuildingUsefulLife,
+            data.advancedSettings?.customEquipmentUsefulLife
+        );
+
+        // 最終保有年(35年目など)時点での売却手残りシミュレーションを実行
+        const exit = calculateExitAnalysis(
+            projection,
+            finalYear.year,
+            exitCapRate,
+            buildingCost,
+            landCost,
+            ownCapitalYen,
+            depInfo
+        );
+        netSaleProceeds = exit.netSaleProceeds;
+    }
+
+    // IRR用のキャッシュフロー配列: [-自己資金, 1年目CF, 2年目CF, ..., (最終年CF + 売却手取り)]
+    // 【バグ修正】35年目期末に物件を売却したと仮定し、売却手取りを加算して正しい税引後IRRを算出
     const irrCashflows = [-ownCapitalYen, ...projection.map(p => p.atcf)];
+    if (irrCashflows.length > 1 && netSaleProceeds > 0) {
+        irrCashflows[irrCashflows.length - 1] += netSaleProceeds;
+    }
     const irr = calculateIRR(irrCashflows);
 
-    // Payback period (year when accumulated CF turns positive)
+    // 回収期間 (累積キャッシュフローがプラスに転じる年)
     const paybackYear = projection.find(p => p.accumulatedCashFlow >= 0)?.year ?? null;
 
-    // Average DSCR
+    // 平均 DSCR (返済に対する NOI の倍率)
     const activeDscrYears = projection.filter(p => p.dscr !== Infinity && p.dscr > 0);
     const avgDscr = activeDscrYears.length > 0
         ? activeDscrYears.reduce((s, p) => s + p.dscr, 0) / activeDscrYears.length
         : 0;
 
-    // BER (Break-even ratio) for year 1
+    // 損益分岐稼働率 (BER) - 初年度
+    // 【バグ修正】満室想定収入が0円の際の0除算によるNaN・Infinityをガード
     const y1 = projection[0];
-    const ber = y1 ? (y1.opex + y1.tmT) / y1.grossIncome : 0;
+    const ber = y1 && y1.grossIncome > 0 ? (y1.opex + y1.tmT) / y1.grossIncome : 0;
 
     return {
         irr,

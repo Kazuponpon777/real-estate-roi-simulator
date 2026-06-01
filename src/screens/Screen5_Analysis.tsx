@@ -12,7 +12,11 @@ import { calculateLongTermProjection, getInvestmentMetrics } from '../utils/simu
 import { Slider } from '../components/ui/Slider';
 import { PrintLayout } from '../components/PrintLayout';
 import { generateExitTable } from '../utils/exitStrategy';
-import { calculateDepreciation } from '../utils/taxCalculations';
+import { calculateDepreciation, analyzeDeadCross } from '../utils/taxCalculations';
+// --- 減価償却・デッドクロス可視化プレミアムコンポーネントのインポート ---
+import { DeadCrossAlert } from '../components/ui/DeadCrossAlert';
+import { DepreciationChart } from '../components/ui/DepreciationChart';
+import { DepreciationSettingsPanel } from '../components/ui/DepreciationSettingsPanel';
 import { generateScenarios, generateSensitivityMatrix } from '../utils/scenarioAnalysis';
 
 // New Landscape Report Components
@@ -60,11 +64,13 @@ export const Screen5_Analysis: React.FC = () => {
 
     // --- Calculations ---
 
-    // 1. Total Investment
+    // 1. 総事業費（自己資金 ＋ 借入額 ＋ その他初期諸経費）の算出
+    // 【バグ修正】新築時のみ本体工事費や解体費用・中金利を合算し、中古時は購入価格と諸経費のみにする（データ混在防止）
+    const isLandMode = data.mode === 'land_new';
     const totalBudget =
         data.budget.landPrice +
-        data.budget.demolitionCost +
-        data.budget.buildingWorksCost +
+        (isLandMode ? data.budget.demolitionCost : 0) +
+        (isLandMode ? data.budget.buildingWorksCost : 0) +
         data.budget.stampDuty +
         data.budget.registrationTax +
         data.budget.acquisitionTax +
@@ -72,7 +78,7 @@ export const Screen5_Analysis: React.FC = () => {
         data.budget.waterContribution +
         data.budget.brokerageFee +
         data.budget.otherInitialCost +
-        data.budget.constructionInterest;
+        (isLandMode ? data.budget.constructionInterest : 0);
 
     const totalBudgetYen = totalBudget * 10000;
 
@@ -134,24 +140,41 @@ export const Screen5_Analysis: React.FC = () => {
     // Investment Metrics
     const investmentMetrics = useMemo(() => getInvestmentMetrics(data, projectionData), [data, projectionData]);
 
-    // Exit Strategy
+    // 出口戦略シミュレーションの計算
     const exitCapRate = data.advancedSettings?.exitCapRate ?? 6.0;
+    const isUsed = data.mode === 'investment_used';
+
+    // 【中古建物減価償却バグ修正】建物価格および土地価格の按分コストを新築・中古のモードごとに正しく算出
+    const buildingWorksCostYen = isUsed
+        ? (data.budget.landPrice * (data.advancedSettings?.buildingRatio ?? 50) / 100) * 10000
+        : data.budget.buildingWorksCost * 10000;
+        
+    const landPriceYen = isUsed
+        ? (data.budget.landPrice * (100 - (data.advancedSettings?.buildingRatio ?? 50)) / 100) * 10000
+        : data.budget.landPrice * 10000;
+
     const depInfo = useMemo(() => calculateDepreciation(
         data.property.structure,
-        data.budget.buildingWorksCost * 10000,
+        buildingWorksCostYen,
         data.advancedSettings?.equipmentRatio ?? 0.2,
-        data.mode === 'investment_used',
+        isUsed,
         data.advancedSettings?.buildingAge ?? 0,
-    ), [data.property.structure, data.budget.buildingWorksCost, data.advancedSettings?.equipmentRatio, data.mode, data.advancedSettings?.buildingAge]);
+        data.advancedSettings?.usefulLifeMethod ?? 'simplified',
+        data.advancedSettings?.customBuildingUsefulLife,
+        data.advancedSettings?.customEquipmentUsefulLife
+    ), [data.property.structure, buildingWorksCostYen, data.advancedSettings?.equipmentRatio, isUsed, data.advancedSettings?.buildingAge, data.advancedSettings?.usefulLifeMethod, data.advancedSettings?.customBuildingUsefulLife, data.advancedSettings?.customEquipmentUsefulLife]);
 
     const exitTable = useMemo(() => generateExitTable(
         projectionData,
         exitCapRate,
-        data.budget.buildingWorksCost * 10000,
-        data.budget.landPrice * 10000,
+        buildingWorksCostYen,
+        landPriceYen,
         data.funding.ownCapital * 10000,
         depInfo,
-    ), [projectionData, exitCapRate, data.budget.buildingWorksCost, data.budget.landPrice, data.funding.ownCapital, depInfo]);
+    ), [projectionData, exitCapRate, buildingWorksCostYen, landPriceYen, data.funding.ownCapital, depInfo]);
+
+    // 【新規】35年間の長期予測からデッドクロス(元金返済額 ＞ 減価償却費)を自動分析
+    const deadCrossAnalysis = useMemo(() => analyzeDeadCross(projectionData), [projectionData]);
 
     // Scenario Comparison
     const scenarios = useMemo(() => generateScenarios(data), [data]);
@@ -405,6 +428,41 @@ export const Screen5_Analysis: React.FC = () => {
                         unit="%"
                         description="年間の空室率上昇幅。0.5%の場合、毎年空室率が0.5ポイント悪化します。"
                     />
+                </div>
+            </div>
+
+            {/* --- 減価償却とデッドクロス分析プレミアムセクション (CTO佐藤和嘉様ご要望) --- */}
+            <div className="space-y-6 mt-12 bg-indigo-50/20 p-6 rounded-2xl border border-indigo-100/50 shadow-sm no-print">
+                <div>
+                    <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                        減価償却とデッドクロス分析
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1">建物・設備の耐用年数を考慮した税引後キャッシュフローへのインパクトを自動診断します。</p>
+                </div>
+
+                {/* デッドクロススマート警告＆コンサルアドバイスカード */}
+                <DeadCrossAlert
+                    hasDeadCross={deadCrossAnalysis.hasDeadCross}
+                    deadCrossYear={deadCrossAnalysis.deadCrossYear}
+                    maxTaxIncrease={deadCrossAnalysis.maxTaxIncrease}
+                    maxCashCrunchYear={deadCrossAnalysis.maxCashCrunchYear}
+                    buildingUsefulLife={depInfo.buildingUsefulLife}
+                    equipmentUsefulLife={depInfo.equipmentUsefulLife}
+                />
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* 減価償却詳細調整コントローラーパネル */}
+                    <div className="lg:col-span-2">
+                        <DepreciationSettingsPanel />
+                    </div>
+
+                    {/* 減価償却 vs ローン返済元金の重ね合わせComposedグラフ */}
+                    <div>
+                        <DepreciationChart
+                            data={projectionData}
+                            deadCrossYear={deadCrossAnalysis.deadCrossYear}
+                        />
+                    </div>
                 </div>
             </div>
 

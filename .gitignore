@@ -28,3 +28,8 @@ local_npm_cache
 .npm_temp_cache
 src_backup_*
 test_data.json
+
+# Environment variables (API Keys, etc.)
+.env
+.env.*
+!.env.example

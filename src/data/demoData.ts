@@ -84,5 +84,7 @@ export const DEMO_DATA: SimulationData = {
         equipmentRatio: 0.2,
         buildingAge: 0,
         exitCapRate: 6.0,
+        buildingRatio: 50,              // 建物比率 (50%)
+        usefulLifeMethod: 'simplified', // 償却期間算出方法 (簡便法)
     }
 };

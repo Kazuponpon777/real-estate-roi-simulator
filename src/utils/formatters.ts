@@ -2,7 +2,14 @@
  * Real Estate ROI Simulator - Formatter Utilities
  */
 
+/**
+ * 通貨フォーマッター (日本円表記: ¥1,234,567)
+ * NaNや無限大などの無効値は安全に ¥0 にフォールバック
+ */
 export const formatCurrency = (value: number): string => {
+    if (value === null || value === undefined || isNaN(value) || !isFinite(value)) {
+        return '¥0';
+    }
     return new Intl.NumberFormat('ja-JP', {
         style: 'currency',
         currency: 'JPY',
@@ -10,21 +17,24 @@ export const formatCurrency = (value: number): string => {
     }).format(value);
 };
 
+/**
+ * 万円単位などの数値フォーマッター (カンマ区切り: 1,234)
+ */
 export const formatManYen = (value: number): string => {
-    // Input often comes as raw number. If we assume internal values are in "Yen",
-    // 1,000,000 -> "100万円"
-    // If internal values are in "10,000 Yen", 100 -> "100万円"
-    // *Assumption*: Internal state for large sums is in "10,000 Yen" (Man-en) unit for easier input, 
-    // but strictly speaking, we might want to store raw Yen.
-    // Let's stick to storing 'Man-en' as the primary unit for user input fields if the requirement says "単位（円/万円）の明示".
-    // However, for calculation it's safer to convert.
-    // For this display formatter, we assume the input IS ALREADY in Man-en if it's a small number, 
-    // or use a smart heuristic. 
-    // Better approach: Just format with commas. The Unit label will be outside the input.
+    if (value === null || value === undefined || isNaN(value) || !isFinite(value)) {
+        return '0';
+    }
     return new Intl.NumberFormat('ja-JP').format(value);
 };
 
+/**
+ * パーセンテージフォーマッター (例: 1.5 -> "1.50%")
+ */
 export const formatPercent = (value: number, decimals: number = 2): string => {
+    if (value === null || value === undefined || isNaN(value) || !isFinite(value)) {
+        const fallbackPercent = (0).toFixed(decimals);
+        return `${fallbackPercent}%`;
+    }
     return new Intl.NumberFormat('ja-JP', {
         style: 'percent',
         minimumFractionDigits: decimals,
@@ -32,7 +42,13 @@ export const formatPercent = (value: number, decimals: number = 2): string => {
     }).format(value / 100);
 };
 
+/**
+ * 一般数値フォーマッター
+ */
 export const formatNumber = (value: number, decimals: number = 0): string => {
+    if (value === null || value === undefined || isNaN(value) || !isFinite(value)) {
+        return '0';
+    }
     return new Intl.NumberFormat('ja-JP', {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,

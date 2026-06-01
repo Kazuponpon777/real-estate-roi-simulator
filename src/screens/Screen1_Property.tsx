@@ -11,7 +11,7 @@ import { DocumentManager } from '../components/ui/DocumentManager';
 import type { PropertyDocument } from '../stores/useSimulationStore';
 
 export const Screen1_Property: React.FC = () => {
-    const { data, updateProperty, nextStep, prevStep } = useSimulationStore();
+    const { data, updateProperty, updateAdvancedSettings, nextStep, prevStep } = useSimulationStore();
     const [activeTab, setActiveTab] = useState<'land' | 'building'>('land');
     const [errors, setErrors] = useState<ValidationErrors>({});
 
@@ -116,10 +116,13 @@ export const Screen1_Property: React.FC = () => {
                                         unit="㎡"
                                         help="登記簿または実測による敷地の面積。建蔽率・容積率の計算基礎になります"
                                         value={data.property.landAreaM2 || ''}
-                                        onChange={(e) => updateLandM2(parseFloat(e.target.value))}
+                                        onChange={(e) => {
+                                            const val = parseFloat(e.target.value);
+                                            updateLandM2(isNaN(val) ? 0 : val);
+                                        }}
                                     />
                                     <div className="text-right text-sm text-slate-500">
-                                        ≒ {(data.property.landAreaM2 / TSUBO_TO_M2).toFixed(2)} 坪
+                                        ≒ {(data.property.landAreaM2 ? data.property.landAreaM2 / TSUBO_TO_M2 : 0).toFixed(2)} 坪
                                     </div>
                                 </div>
 
@@ -130,14 +133,20 @@ export const Screen1_Property: React.FC = () => {
                                             type="number"
                                             unit="m"
                                             value={data.property.frontage || ''}
-                                            onChange={(e) => updateProperty({ frontage: parseFloat(e.target.value) })}
+                                            onChange={(e) => {
+                                                const val = parseFloat(e.target.value);
+                                                updateProperty({ frontage: isNaN(val) ? 0 : val });
+                                            }}
                                         />
                                         <InputGroup
                                             label="奥行"
                                             type="number"
                                             unit="m"
                                             value={data.property.depth || ''}
-                                            onChange={(e) => updateProperty({ depth: parseFloat(e.target.value) })}
+                                            onChange={(e) => {
+                                                const val = parseFloat(e.target.value);
+                                                updateProperty({ depth: isNaN(val) ? 0 : val });
+                                            }}
                                         />
                                     </div>
                                 </div>
@@ -170,7 +179,10 @@ export const Screen1_Property: React.FC = () => {
                                         type="number"
                                         unit="m"
                                         value={data.property.roadWidth1 || ''}
-                                        onChange={(e) => updateProperty({ roadWidth1: parseFloat(e.target.value) })}
+                                        onChange={(e) => {
+                                            const val = parseFloat(e.target.value);
+                                            updateProperty({ roadWidth1: isNaN(val) ? 0 : val });
+                                        }}
                                     />
                                 </div>
                             </div>
@@ -202,7 +214,10 @@ export const Screen1_Property: React.FC = () => {
                                     unit="%"
                                     help="敷地面積に対する建築面積の割合。用途地域ごとに上限が定められています"
                                     value={data.property.coverageRate || ''}
-                                    onChange={(e) => updateProperty({ coverageRate: parseFloat(e.target.value) })}
+                                    onChange={(e) => {
+                                        const val = parseFloat(e.target.value);
+                                        updateProperty({ coverageRate: isNaN(val) ? 0 : val });
+                                    }}
                                 />
                                 <InputGroup
                                     label="容積率"
@@ -210,7 +225,10 @@ export const Screen1_Property: React.FC = () => {
                                     unit="%"
                                     help="敷地面積に対する延床面積の上限割合。建物ボリュームの上限を決めます"
                                     value={data.property.floorAreaRate || ''}
-                                    onChange={(e) => updateProperty({ floorAreaRate: parseFloat(e.target.value) })}
+                                    onChange={(e) => {
+                                        const val = parseFloat(e.target.value);
+                                        updateProperty({ floorAreaRate: isNaN(val) ? 0 : val });
+                                    }}
                                 />
                             </div>
                         </div>
@@ -230,7 +248,9 @@ export const Screen1_Property: React.FC = () => {
                                         value={data.property.cloudFolderUrl || ''}
                                         onChange={(e) => updateProperty({ cloudFolderUrl: e.target.value })}
                                     />
-                                    {data.property.cloudFolderUrl && (
+                                    {/* 【XSS脆弱性対策】URLがhttp:// または https:// で始まっている安全なリンクのみ開くボタンを有効化 */}
+                                    {data.property.cloudFolderUrl && 
+                                     (data.property.cloudFolderUrl.startsWith('http://') || data.property.cloudFolderUrl.startsWith('https://')) && (
                                         <a
                                             href={data.property.cloudFolderUrl}
                                             target="_blank"
@@ -274,7 +294,10 @@ export const Screen1_Property: React.FC = () => {
                                 type="number"
                                 unit="戸"
                                 value={data.property.totalUnits || ''}
-                                onChange={(e) => updateProperty({ totalUnits: parseFloat(e.target.value) })}
+                                onChange={(e) => {
+                                    const val = parseFloat(e.target.value);
+                                    updateProperty({ totalUnits: isNaN(val) ? 0 : val });
+                                }}
                             />
 
                             <InputGroup
@@ -282,7 +305,10 @@ export const Screen1_Property: React.FC = () => {
                                 type="number"
                                 unit="㎡"
                                 value={data.property.buildingAreaM2 || ''}
-                                onChange={(e) => updateProperty({ buildingAreaM2: parseFloat(e.target.value) })}
+                                onChange={(e) => {
+                                    const val = parseFloat(e.target.value);
+                                    updateProperty({ buildingAreaM2: isNaN(val) ? 0 : val });
+                                }}
                             />
 
                             <InputGroup
@@ -290,8 +316,26 @@ export const Screen1_Property: React.FC = () => {
                                 type="number"
                                 unit="㎡"
                                 value={data.property.totalFloorAreaM2 || ''}
-                                onChange={(e) => updateProperty({ totalFloorAreaM2: parseFloat(e.target.value) })}
+                                onChange={(e) => {
+                                    const val = parseFloat(e.target.value);
+                                    updateProperty({ totalFloorAreaM2: isNaN(val) ? 0 : val });
+                                }}
                             />
+
+                            {/* 【設計漏れ修正】中古物件モードの際、築年数（減価償却の算出基礎）を入力できるようにUIを追加 */}
+                            {data.mode === 'investment_used' && (
+                                <InputGroup
+                                    label="築年数"
+                                    type="number"
+                                    unit="年"
+                                    help="物件の築年数。これに基づいて中古の「簡便法（残存耐用年数）」が自動計算されます。"
+                                    value={data.advancedSettings?.buildingAge || ''}
+                                    onChange={(e) => {
+                                        const val = parseFloat(e.target.value);
+                                        updateAdvancedSettings({ buildingAge: isNaN(val) ? 0 : val });
+                                    }}
+                                />
+                            )}
                         </div>
                     </Card>
                 )}

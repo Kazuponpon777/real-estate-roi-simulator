@@ -21,23 +21,37 @@ export const TAX_RATES = {
 // --- Loan Calculations ---
 
 /**
- * PMT (Payment) Calculation for Principal and Interest Equal Repayment
- * @param principal Principal amount (Loan amount)
- * @param ratePtr Yearly interest rate in percentage (e.g. 1.5 for 1.5%)
- * @param years Loan duration in years
- * @returns Monthly payment amount
+ * 元利均等返済における毎月の返済額 (PMT) を計算する
+ * @param principal 借入元金 (円)
+ * @param ratePtr 年利 (%) (例: 1.5% の場合は 1.5)
+ * @param years 借入期間 (年)
+ * @returns 毎月の返済額 (円)
  */
 export const calculatePmt = (principal: number, ratePtr: number, years: number): number => {
+    // 借入元金または借入期間が0以下の場合は返済不要 (0除算ガード)
+    if (principal <= 0 || years <= 0) return 0;
+    
+    // 金利がマイナスの場合は0%として処理
+    if (ratePtr < 0) ratePtr = 0;
+
+    // 金利が0%の場合は単なる元金均等割
     if (ratePtr === 0) return Math.round(principal / (years * 12));
 
     const monthlyRate = ratePtr / 100 / 12;
     const numPayments = years * 12;
 
-    // PMT formula: P * (r(1+r)^n) / ((1+r)^n - 1)
+    // PMT計算公式: 元金 * (月利 * (1 + 月利)^返済回数) / ((1 + 月利)^返済回数 - 1)
     const factor = Math.pow(1 + monthlyRate, numPayments);
+    
+    // 金利や期間が極端に大きく、JavaScriptの数値表現上限を超えて複利係数が無限大(Infinity)になった場合の安全処理
+    if (!isFinite(factor) || factor - 1 === 0) {
+        return Math.round(principal * monthlyRate);
+    }
+
     const monthlyPayment = (principal * monthlyRate * factor) / (factor - 1);
 
-    return Math.round(monthlyPayment);
+    // 計算結果がNaNまたは無限大になった場合は0にフォールバック
+    return isNaN(monthlyPayment) || !isFinite(monthlyPayment) ? 0 : Math.round(monthlyPayment);
 };
 
 // --- Unit Conversions ---

@@ -134,6 +134,12 @@ export interface AdvancedSettings {
     buildingAge: number; // 築年数 (中古物件用)
     // Exit Strategy
     exitCapRate: number; // 売却時想定Cap Rate (%)
+
+    // --- 減価償却・税務プレミアム機能用の追加プロパティ ---
+    buildingRatio: number;        // 建物価格割合 (%, 中古物件購入用, 0-100, 例: 50 = 50%)
+    usefulLifeMethod: 'statutory' | 'simplified' | 'custom'; // 耐用年数算出方法 ('statutory': 法定耐用年数, 'simplified': 簡便法, 'custom': カスタム入力)
+    customBuildingUsefulLife?: number;  // カスタム時の建物耐用年数 (年)
+    customEquipmentUsefulLife?: number; // カスタム時の設備耐用年数 (年)
 }
 
 export interface SimulationData {
@@ -263,6 +269,8 @@ const INITIAL_DATA: SimulationData = {
         equipmentRatio: 0.2,
         buildingAge: 0,
         exitCapRate: 6.0,
+        buildingRatio: 50,           // 中古物件購入における建物割合のデフォルト値 (50%)
+        usefulLifeMethod: 'simplified', // 償却期間算出方法のデフォルト値 (簡便法)
     },
 };
 
