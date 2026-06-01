@@ -15,6 +15,23 @@ export const Screen1_Property: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'land' | 'building'>('land');
     const [errors, setErrors] = useState<ValidationErrors>({});
 
+    const [areaUnit, setAreaUnit] = useState<'m2' | 'tsubo'>('m2');
+    const [localTsubo, setLocalTsubo] = useState<string>(
+        data.property.landAreaM2 ? (data.property.landAreaM2 / TSUBO_TO_M2).toFixed(2) : ''
+    );
+
+    // 平米が変更されたときの同期
+    const handleM2Change = (m2Val: number) => {
+        updateLandM2(m2Val);
+        setLocalTsubo(m2Val > 0 ? (m2Val / TSUBO_TO_M2).toFixed(2) : '');
+    };
+
+    // 坪数が変更されたときの同期
+    const handleTsuboChange = (tsuboVal: number) => {
+        setLocalTsubo(tsuboVal.toString());
+        updateLandM2(tsuboVal * TSUBO_TO_M2);
+    };
+
     const isLandMode = data.mode === 'land_new';
     const isLeaseMode = data.mode === 'land_lease';
     const isUsedMode = data.mode === 'investment_used';
@@ -143,19 +160,50 @@ export const Screen1_Property: React.FC = () => {
                                             </label>
                                         </div>
 
-                                        <InputGroup
-                                            label="敷地面積 (㎡)"
-                                            type="number"
-                                            unit="㎡"
-                                            help="登記簿または実測による敷地の面積。建蔽率・容積率の計算基礎になります"
-                                            value={data.property.landAreaM2 || ''}
-                                            onChange={(e) => {
-                                                const val = parseFloat(e.target.value);
-                                                updateLandM2(isNaN(val) ? 0 : val);
-                                            }}
-                                        />
-                                        <div className="text-right text-sm text-slate-500">
-                                            ≒ {(data.property.landAreaM2 ? data.property.landAreaM2 / TSUBO_TO_M2 : 0).toFixed(2)} 坪
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <label className="text-xs font-semibold text-slate-500">面積単位の選択</label>
+                                                <div className="flex bg-slate-100 p-0.5 rounded-lg text-[10px] font-bold border border-slate-200">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setAreaUnit('m2')}
+                                                        className={`px-2 py-0.5 rounded transition-all ${areaUnit === 'm2' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                                    >
+                                                        ㎡基準
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setAreaUnit('tsubo')}
+                                                        className={`px-2 py-0.5 rounded transition-all ${areaUnit === 'tsubo' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                                    >
+                                                        坪基準
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            {areaUnit === 'm2' ? (
+                                                <InputGroup
+                                                    label="敷地面積 (㎡)"
+                                                    type="number"
+                                                    unit="㎡"
+                                                    help="登記簿または実測による敷地の面積。建蔽率・容積率の計算基礎になります"
+                                                    value={data.property.landAreaM2 || ''}
+                                                    onChange={(e) => handleM2Change(parseFloat(e.target.value) || 0)}
+                                                />
+                                            ) : (
+                                                <InputGroup
+                                                    label="敷地面積 (坪)"
+                                                    type="number"
+                                                    unit="坪"
+                                                    help="登記簿または実測による敷地の面積（坪単位）。建蔽率・容積率の計算基礎になります"
+                                                    value={localTsubo || ''}
+                                                    onChange={(e) => handleTsuboChange(parseFloat(e.target.value) || 0)}
+                                                />
+                                            )}
+                                            <div className="text-right text-xs text-slate-400 font-medium font-mono">
+                                                {areaUnit === 'm2'
+                                                    ? `≒ ${(data.property.landAreaM2 ? data.property.landAreaM2 / TSUBO_TO_M2 : 0).toFixed(2)} 坪`
+                                                    : `≒ ${(data.property.landAreaM2 || 0).toFixed(2)} ㎡`}
+                                            </div>
                                         </div>
                                     </div>
 
@@ -186,22 +234,54 @@ export const Screen1_Property: React.FC = () => {
                                 </div>
                             )}
 
-                            {/* 借地リースや中古では、単純な敷地面積の入力欄のみを表示（すっきり化） */}
                             {!isLandMode && (
-                                <div className="md:col-span-2 p-4 bg-slate-50 rounded-xl border border-slate-100 grid md:grid-cols-2 gap-6 items-center">
-                                    <InputGroup
-                                        label="敷地面積 (㎡)"
-                                        type="number"
-                                        unit="㎡"
-                                        help="敷地の登録面積です。"
-                                        value={data.property.landAreaM2 || ''}
-                                        onChange={(e) => {
-                                            const val = parseFloat(e.target.value);
-                                            updateLandM2(isNaN(val) ? 0 : val);
-                                        }}
-                                    />
-                                    <div className="text-left text-sm text-slate-500 mt-6">
-                                        坪数換算: <span className="font-bold text-slate-700">{(data.property.landAreaM2 ? data.property.landAreaM2 / TSUBO_TO_M2 : 0).toFixed(2)}</span> 坪
+                                <div className="md:col-span-2 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                    <div className="grid md:grid-cols-2 gap-6 items-center">
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <label className="text-xs font-semibold text-slate-500">面積単位の選択</label>
+                                                <div className="flex bg-slate-100 p-0.5 rounded-lg text-[10px] font-bold border border-slate-200">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setAreaUnit('m2')}
+                                                        className={`px-2 py-0.5 rounded transition-all ${areaUnit === 'm2' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                                    >
+                                                        ㎡基準
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setAreaUnit('tsubo')}
+                                                        className={`px-2 py-0.5 rounded transition-all ${areaUnit === 'tsubo' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                                    >
+                                                        坪基準
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            {areaUnit === 'm2' ? (
+                                                <InputGroup
+                                                    label="敷地面積 (㎡)"
+                                                    type="number"
+                                                    unit="㎡"
+                                                    help="敷地の登録面積です。"
+                                                    value={data.property.landAreaM2 || ''}
+                                                    onChange={(e) => handleM2Change(parseFloat(e.target.value) || 0)}
+                                                />
+                                            ) : (
+                                                <InputGroup
+                                                    label="敷地面積 (坪)"
+                                                    type="number"
+                                                    unit="坪"
+                                                    help="敷地の登録面積（坪単位）。"
+                                                    value={localTsubo || ''}
+                                                    onChange={(e) => handleTsuboChange(parseFloat(e.target.value) || 0)}
+                                                />
+                                            )}
+                                        </div>
+                                        <div className="text-left text-sm text-slate-500 font-medium font-mono mt-6">
+                                            {areaUnit === 'm2'
+                                                ? <>坪数換算: <span className="font-bold text-slate-700">{(data.property.landAreaM2 ? data.property.landAreaM2 / TSUBO_TO_M2 : 0).toFixed(2)}</span> 坪</>
+                                                : <>平米換算: <span className="font-bold text-slate-700">{(data.property.landAreaM2 || 0).toFixed(2)}</span> ㎡</>}
+                                        </div>
                                     </div>
                                 </div>
                             )}

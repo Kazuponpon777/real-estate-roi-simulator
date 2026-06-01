@@ -77,3 +77,77 @@ export const calculateNetYield = (noi: number, totalInvestment: number): number 
     if (totalInvestment === 0) return 0;
     return (noi / totalInvestment) * 100;
 };
+
+/**
+ * 自動印紙税計算 (Zustandストア内移行用)
+ */
+export const calculateAutoStampDuty = (budget: any, mode: string): number => {
+    const isLeaseMode = mode === 'land_lease';
+    const isLandMode = mode === 'land_new';
+    const landPrice = (budget.landPrice || 0) * 10000;
+    const buildingCost = (budget.buildingWorksCost || 0) * 10000;
+    const total = isLeaseMode ? buildingCost : (landPrice + (isLandMode ? buildingCost : 0));
+    
+    if (total > 100000000) return 6;
+    if (total > 50000000) return 3;
+    if (total > 10000000) return 1;
+    if (total > 5000000) return 0.5;
+    return 0;
+};
+
+/**
+ * 自動登録免許税計算 (Zustandストア内移行用)
+ */
+export const calculateAutoRegistrationTax = (budget: any, mode: string): number => {
+    const isLeaseMode = mode === 'land_lease';
+    const isLandMode = mode === 'land_new';
+    const landPrice = (budget.landPrice || 0) * 10000;
+    const buildingCost = (budget.buildingWorksCost || 0) * 10000;
+    
+    const estLandTaxValue = landPrice * 0.7;
+    const estBuildingTaxValue = buildingCost * 0.5;
+    
+    const regLand = isLeaseMode ? 0 : estLandTaxValue * TAX_RATES.REGISTRATION_LICENSE.LAND_OWNERSHIP_TRANSFER;
+    const regBuilding = (isLandMode || isLeaseMode)
+        ? estBuildingTaxValue * TAX_RATES.REGISTRATION_LICENSE.BUILDING_PRESERVATION
+        : estBuildingTaxValue * TAX_RATES.REGISTRATION_LICENSE.LAND_OWNERSHIP_TRANSFER;
+    
+    return Math.round((regLand + regBuilding) / 10000);
+};
+
+/**
+ * 自動不動産取得税計算 (Zustandストア内移行用)
+ */
+export const calculateAutoAcquisitionTax = (budget: any, mode: string): number => {
+    const isLeaseMode = mode === 'land_lease';
+    const isLandMode = mode === 'land_new';
+    const landPrice = (budget.landPrice || 0) * 10000;
+    const buildingCost = (budget.buildingWorksCost || 0) * 10000;
+    
+    const estLandTaxValue = landPrice * 0.7;
+    const estBuildingTaxValue = buildingCost * 0.5;
+    
+    const acqLand = isLeaseMode ? 0 : Math.max(0, (estLandTaxValue - (isLandMode ? 12000000 : 0)) * TAX_RATES.REAL_ESTATE_ACQUISITION.LAND);
+    const acqBuilding = estBuildingTaxValue * TAX_RATES.REAL_ESTATE_ACQUISITION.BUILDING;
+    
+    return Math.max(0, Math.round((acqLand + acqBuilding) / 10000));
+};
+
+/**
+ * 自動仲介手数料計算 (Zustandストア内移行用、新築モード土地価格対応)
+ */
+export const calculateAutoBrokerageFee = (budget: any, mode: string): number => {
+    const isLeaseMode = mode === 'land_lease';
+    const isLandMode = mode === 'land_new';
+    
+    if (isLeaseMode) return 0;
+    
+    const landPrice = (budget.landPrice || 0) * 10000;
+    const buildingCost = (budget.buildingWorksCost || 0) * 10000;
+    
+    // 新築の場合は土地価格のみ、中古の場合は土地・建物総額に対して計算
+    const brokerageBase = isLandMode ? landPrice : (landPrice + buildingCost);
+    const brokerage = brokerageBase > 4000000 ? (brokerageBase * 0.03 + 60000) * 1.1 : 0;
+    
+    return Math.round(brokerage / 10000);
+};

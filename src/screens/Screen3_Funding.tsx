@@ -6,6 +6,7 @@ import { InputGroup } from '../components/ui/InputGroup';
 import { Button } from '../components/ui/Button';
 import { ChevronRight, ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { formatManYen } from '../utils/formatters';
+import { validateFunding, type ValidationErrors } from '../utils/validation';
 
 export const Screen3_Funding: React.FC = () => {
     const { data, updateFunding, nextStep, prevStep } = useSimulationStore();
@@ -13,6 +14,9 @@ export const Screen3_Funding: React.FC = () => {
     const isLandMode = data.mode === 'land_new';
     const isLeaseMode = data.mode === 'land_lease';
     const landCostPart = isLeaseMode ? (data.budget.landLeaseDeposit || 0) : (data.budget.landPrice || 0);
+
+    // ローカルのエラー状態を定義
+    const [errors, setErrors] = React.useState<ValidationErrors>({});
 
     const totalBudget =
         landCostPart +
@@ -23,7 +27,7 @@ export const Screen3_Funding: React.FC = () => {
         data.budget.acquisitionTax +
         data.budget.fireInsurancePrepaid +
         data.budget.waterContribution +
-        (!isLandMode && !isLeaseMode ? data.budget.brokerageFee : 0) + // 新築・借地時は仲介手数料なし
+        (!isLeaseMode ? data.budget.brokerageFee : 0) + // 借地時以外（新築・中古）は仲介手数料を合算する
         data.budget.otherInitialCost +
         ((isLandMode || isLeaseMode) ? data.budget.constructionInterest : 0);
 
@@ -32,6 +36,23 @@ export const Screen3_Funding: React.FC = () => {
 
     const balance = totalFunding - totalBudget;
     const isBalanced = Math.abs(balance) < 0.1;
+
+    // バリデーションチェックを実行して次へ進む
+    const handleNext = () => {
+        const validationErrors = validateFunding(data);
+        
+        // 資金調達額が総事業費に足りているかのチェック（任意ですが、アラートとして出しておくと親切）
+        if (totalFunding < totalBudget) {
+            validationErrors['funding.shortage'] = `調達合計額が総事業費に不足しています（不足分: ${formatManYen(totalBudget - totalFunding)} 万円）`;
+        }
+
+        if (Object.keys(validationErrors).length > 0) {
+            setErrors(validationErrors);
+            return;
+        }
+        setErrors({});
+        nextStep();
+    };
 
     const addLoan = () => {
         const newLoan: Loan = {
@@ -165,11 +186,23 @@ export const Screen3_Funding: React.FC = () => {
                 </div>
             </div>
 
+            {/* エラーメッセージの表示 */}
+            {Object.keys(errors).length > 0 && (
+                <div className="px-4 py-3 bg-rose-50 border border-rose-200 rounded-lg text-sm text-rose-700 font-medium">
+                    ⚠️ 入力内容に不足があります:
+                    <ul className="list-disc pl-5 mt-1 space-y-1">
+                        {Object.values(errors).map((err, i) => (
+                            <li key={i}>{err}</li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+
             <div className="flex justify-between pt-6 border-t border-slate-200">
                 <Button variant="ghost" onClick={prevStep} className="flex items-center gap-2">
                     <ArrowLeft className="h-4 w-4" /> 戻る
                 </Button>
-                <Button onClick={nextStep} className="flex items-center gap-2">
+                <Button onClick={handleNext} className="flex items-center gap-2">
                     次へ <ChevronRight className="h-4 w-4" />
                 </Button>
             </div>

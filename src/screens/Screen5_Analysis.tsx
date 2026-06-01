@@ -131,6 +131,19 @@ export const Screen5_Analysis: React.FC = () => {
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const csvInputRef = React.useRef<HTMLInputElement>(null);
 
+    // 感度分析スライダー用のローカルステート (ドラッグ中の描画ラグ解消のため2重同期State設計を採用)
+    const [localRentDecline, setLocalRentDecline] = React.useState(data.advancedSettings?.rentDeclineRate ?? 1.0);
+    const [localVacancyRise, setLocalVacancyRise] = React.useState(data.advancedSettings?.vacancyRiseRate ?? 0.5);
+
+    // ストアの値が外部から更新された時（リセット等）の同期
+    React.useEffect(() => {
+        setLocalRentDecline(data.advancedSettings?.rentDeclineRate ?? 1.0);
+    }, [data.advancedSettings?.rentDeclineRate]);
+
+    React.useEffect(() => {
+        setLocalVacancyRise(data.advancedSettings?.vacancyRiseRate ?? 0.5);
+    }, [data.advancedSettings?.vacancyRiseRate]);
+
     const projectionData = useMemo(() => calculateLongTermProjection(data), [data]);
 
     const handleLoadJSON = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -312,9 +325,11 @@ export const Screen5_Analysis: React.FC = () => {
         ? (data.budget.landPrice * (data.advancedSettings?.buildingRatio ?? 50) / 100) * 10000
         : data.budget.buildingWorksCost * 10000;
         
-    const landPriceYen = isUsed
-        ? (data.budget.landPrice * (100 - (data.advancedSettings?.buildingRatio ?? 50)) / 100) * 10000
-        : data.budget.landPrice * 10000;
+    const landPriceYen = isLeaseMode
+        ? 0
+        : (isUsed
+            ? (data.budget.landPrice * (100 - (data.advancedSettings?.buildingRatio ?? 50)) / 100) * 10000
+            : (data.budget.landPrice + (data.budget.demolitionCost ?? 0)) * 10000);
 
     const depInfo = useMemo(() => calculateDepreciation(
         data.property.structure,
@@ -334,7 +349,10 @@ export const Screen5_Analysis: React.FC = () => {
         landPriceYen,
         data.funding.ownCapital * 10000,
         depInfo,
-    ), [projectionData, exitCapRate, buildingWorksCostYen, landPriceYen, data.funding.ownCapital, depInfo]);
+        [5, 10, 15, 20, 25, 30], // デフォルトの年数配列を明示的に渡して位置引数ズレを解消
+        isLeaseMode,
+        (data.budget.landLeaseDeposit ?? 0) * 10000 // 土地敷金を正しく引き渡す
+    ), [projectionData, exitCapRate, buildingWorksCostYen, landPriceYen, data.funding.ownCapital, depInfo, isLeaseMode, data.budget.landLeaseDeposit]);
 
     // 【新規】35年間の長期予測からデッドクロス(元金返済額 ＞ 減価償却費)を自動分析
     const deadCrossAnalysis = useMemo(() => analyzeDeadCross(projectionData), [projectionData]);
@@ -605,21 +623,25 @@ export const Screen5_Analysis: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <Slider
                         label="家賃下落率 (年率)"
-                        value={data.advancedSettings?.rentDeclineRate ?? 1.0}
+                        value={localRentDecline}
                         min={0}
                         max={5.0}
                         step={0.1}
-                        onChange={(val) => updateData({ advancedSettings: { ...data.advancedSettings, rentDeclineRate: val } })}
+                        onChange={(val) => setLocalRentDecline(val)}
+                        onMouseUp={() => updateData({ advancedSettings: { ...data.advancedSettings, rentDeclineRate: localRentDecline } })}
+                        onTouchEnd={() => updateData({ advancedSettings: { ...data.advancedSettings, rentDeclineRate: localRentDecline } })}
                         unit="%"
                         description="年間の家賃下落率。1%の場合、毎年家賃収入が1%ずつ減少します。"
                     />
                     <Slider
                         label="空室率上昇 (年率)"
-                        value={data.advancedSettings?.vacancyRiseRate ?? 0.5}
+                        value={localVacancyRise}
                         min={0}
                         max={5.0}
                         step={0.1}
-                        onChange={(val) => updateData({ advancedSettings: { ...data.advancedSettings, vacancyRiseRate: val } })}
+                        onChange={(val) => setLocalVacancyRise(val)}
+                        onMouseUp={() => updateData({ advancedSettings: { ...data.advancedSettings, vacancyRiseRate: localVacancyRise } })}
+                        onTouchEnd={() => updateData({ advancedSettings: { ...data.advancedSettings, vacancyRiseRate: localVacancyRise } })}
                         unit="%"
                         description="年間の空室率上昇幅。0.5%の場合、毎年空室率が0.5ポイント悪化します。"
                     />

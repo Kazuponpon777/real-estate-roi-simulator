@@ -7,11 +7,24 @@ interface SliderProps {
     max: number;
     step: number;
     onChange: (value: number) => void;
+    onMouseUp?: () => void;
+    onTouchEnd?: () => void;
     unit?: string;
     description?: string;
 }
 
-export const Slider: React.FC<SliderProps> = ({ label, value, min, max, step, onChange, unit, description }) => {
+export const Slider: React.FC<SliderProps> = ({ 
+    label, 
+    value, 
+    min, 
+    max, 
+    step, 
+    onChange, 
+    onMouseUp,
+    onTouchEnd,
+    unit, 
+    description 
+}) => {
     return (
         <div className="space-y-2">
             <div className="flex justify-between items-center">
@@ -28,6 +41,8 @@ export const Slider: React.FC<SliderProps> = ({ label, value, min, max, step, on
                 step={step}
                 value={value}
                 onChange={(e) => onChange(parseFloat(e.target.value))}
+                onMouseUp={onMouseUp}
+                onTouchEnd={onTouchEnd}
                 className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
             />
             {description && <p className="text-xs text-slate-500">{description}</p>}

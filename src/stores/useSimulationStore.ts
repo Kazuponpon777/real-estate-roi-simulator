@@ -11,6 +11,12 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { TaxMode } from '../utils/taxCalculations';
 import { validateAndSanitizeUrl } from '../utils/validation';
+import {
+    calculateAutoStampDuty,
+    calculateAutoRegistrationTax,
+    calculateAutoAcquisitionTax,
+    calculateAutoBrokerageFee
+} from '../utils/calculations';
 
 
 // --- タイプ定義 ---
@@ -74,6 +80,7 @@ export interface ProjectBudget {
     fireInsurancePrepaid: number; // 火災保険一括
     waterContribution: number; // 市納金 (水道分担金等)
     brokerageFee: number; // 仲介手数料 (added commonly)
+    isAutoBrokerageFee?: boolean;
     otherInitialCost: number;
     constructionInterest: number; // 工事中金利
     
@@ -243,6 +250,7 @@ const INITIAL_DATA: SimulationData = {
         fireInsurancePrepaid: 0,
         waterContribution: 0,
         brokerageFee: 0,
+        isAutoBrokerageFee: true,
         otherInitialCost: 0,
         constructionInterest: 0,
         landLeaseDeposit: 0, // 土地敷金デフォルト値 (万円)
@@ -321,7 +329,26 @@ export const useSimulationStore = create<SimulationState>()(
                 }),
 
             updateBudget: (updates) =>
-                set((state) => ({ data: { ...state.data, budget: { ...state.data.budget, ...updates } } })),
+                set((state) => {
+                    const nextBudget = { ...state.data.budget, ...updates };
+                    const mode = state.data.mode;
+
+                    // 自動計算フラグが有効な場合は自律的に計算を実行 (UI側のuseEffect依存を排除)
+                    if (nextBudget.isAutoStampDuty !== false) {
+                        nextBudget.stampDuty = calculateAutoStampDuty(nextBudget, mode);
+                    }
+                    if (nextBudget.isAutoRegistrationTax !== false) {
+                        nextBudget.registrationTax = calculateAutoRegistrationTax(nextBudget, mode);
+                    }
+                    if (nextBudget.isAutoAcquisitionTax !== false) {
+                        nextBudget.acquisitionTax = calculateAutoAcquisitionTax(nextBudget, mode);
+                    }
+                    if (nextBudget.isAutoBrokerageFee !== false) {
+                        nextBudget.brokerageFee = calculateAutoBrokerageFee(nextBudget, mode);
+                    }
+
+                    return { data: { ...state.data, budget: nextBudget } };
+                }),
 
             updateFunding: (updates) =>
                 set((state) => ({ data: { ...state.data, funding: { ...state.data.funding, ...updates } } })),
@@ -349,7 +376,10 @@ export const useSimulationStore = create<SimulationState>()(
                 if (state.property.landAreaM2 > 0) score += 1;
 
                 // 2. Budget
-                if (state.budget.landPrice > 0 || state.budget.buildingWorksCost > 0) score += 1;
+                const hasBudgetInput = state.mode === 'land_lease'
+                    ? ((state.budget.landLeaseDeposit || 0) > 0 || (state.budget.buildingWorksCost || 0) > 0)
+                    : ((state.budget.landPrice || 0) > 0 || (state.budget.buildingWorksCost || 0) > 0);
+                if (hasBudgetInput) score += 1;
 
                 // 3. Funding
                 const totalFunding = state.funding.ownCapital + state.funding.loans.reduce((acc: number, l: any) => acc + l.amount, 0);

@@ -16,9 +16,24 @@ import { InputGroup } from '../components/ui/InputGroup';
 import { Button } from '../components/ui/Button';
 import { ChevronRight, ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { formatManYen } from '../utils/formatters';
+import { validateRentRoll, type ValidationErrors } from '../utils/validation';
 
 export const Screen4_RentRoll: React.FC = () => {
     const { data, updateRentRoll, updateExpenses, nextStep, prevStep } = useSimulationStore();
+
+    // ローカルのエラー状態を定義
+    const [errors, setErrors] = React.useState<ValidationErrors>({});
+
+    // バリデーションチェックを実行して次へ進む
+    const handleNext = () => {
+        const validationErrors = validateRentRoll(data);
+        if (Object.keys(validationErrors).length > 0) {
+            setErrors(validationErrors);
+            return;
+        }
+        setErrors({});
+        nextStep();
+    };
 
     // Helpers for Rent Roll
     const addRoomTypeWithUsage = (usage: 'residential' | 'commercial') => {
@@ -467,11 +482,23 @@ export const Screen4_RentRoll: React.FC = () => {
                 </div>
             </div>
 
+            {/* エラーメッセージの表示 */}
+            {Object.keys(errors).length > 0 && (
+                <div className="px-4 py-3 bg-rose-50 border border-rose-200 rounded-lg text-sm text-rose-700 font-medium">
+                    ⚠️ 入力内容に不足があります:
+                    <ul className="list-disc pl-5 mt-1 space-y-1">
+                        {Object.values(errors).map((err, i) => (
+                            <li key={i}>{err}</li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+
             <div className="flex justify-between pt-6 border-t border-slate-200">
                 <Button variant="ghost" onClick={prevStep} className="flex items-center gap-2">
                     <ArrowLeft className="h-4 w-4" /> 戻る
                 </Button>
-                <Button onClick={nextStep} className="flex items-center gap-2">
+                <Button onClick={handleNext} className="flex items-center gap-2">
                     シミュレーション結果へ <ChevronRight className="h-4 w-4" />
                 </Button>
             </div>

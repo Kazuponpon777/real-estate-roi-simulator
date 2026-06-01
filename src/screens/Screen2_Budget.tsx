@@ -5,101 +5,31 @@ import { InputGroup } from '../components/ui/InputGroup';
 import { Button } from '../components/ui/Button';
 import { ChevronRight, ArrowLeft, RefreshCw } from 'lucide-react';
 import { formatManYen } from '../utils/formatters';
-import { TAX_RATES } from '../utils/calculations';
+import { validateBudget, type ValidationErrors } from '../utils/validation';
 
 export const Screen2_Budget: React.FC = () => {
     const { data, updateBudget, nextStep, prevStep } = useSimulationStore();
     const isLandMode = data.mode === 'land_new';
     const isLeaseMode = data.mode === 'land_lease';
 
-    React.useEffect(() => {
-        const landPrice = (data.budget.landPrice || 0) * 10000;
-        const buildingCost = (data.budget.buildingWorksCost || 0) * 10000;
+    // ローカルのエラー状態を定義
+    const [errors, setErrors] = React.useState<ValidationErrors>({});
 
-        const newUpdates: Partial<typeof data.budget> = {};
-
-        // 1. Stamp Duty
-        if (data.budget.isAutoStampDuty !== false) {
-            let stamp = 1;
-            // 借地リースの場合は土地を購入しないため建物建築費のみを印紙税の基準とする
-            const total = isLeaseMode ? buildingCost : (landPrice + (isLandMode ? buildingCost : 0));
-            if (total > 100000000) stamp = 6;
-            else if (total > 50000000) stamp = 3;
-            else if (total > 10000000) stamp = 1;
-            else if (total > 5000000) stamp = 0.5;
-            else stamp = 0; // Less than 5M, or 0
-
-            if (data.budget.stampDuty !== stamp) newUpdates.stampDuty = stamp;
-        }
-
-        // Estimates
-        const estLandTaxValue = landPrice * 0.7;
-        const estBuildingTaxValue = buildingCost * 0.5;
-
-        // 2. Registration Tax
-        if (data.budget.isAutoRegistrationTax !== false) {
-            // 借地リースの場合は土地の登録免許税は発生しないため建物の保存登記のみ
-            const regLand = isLeaseMode ? 0 : estLandTaxValue * TAX_RATES.REGISTRATION_LICENSE.LAND_OWNERSHIP_TRANSFER;
-            const regBuilding = (isLandMode || isLeaseMode)
-                ? estBuildingTaxValue * TAX_RATES.REGISTRATION_LICENSE.BUILDING_PRESERVATION
-                : estBuildingTaxValue * TAX_RATES.REGISTRATION_LICENSE.LAND_OWNERSHIP_TRANSFER;
-            const regTotalMan = Math.round((regLand + regBuilding) / 10000);
-
-            if (data.budget.registrationTax !== regTotalMan) newUpdates.registrationTax = regTotalMan;
-        }
-
-        // 3. Acquisition Tax
-        if (data.budget.isAutoAcquisitionTax !== false) {
-            // 借地リースの場合は土地の不動産取得税は発生しない
-            const acqLand = isLeaseMode ? 0 : Math.max(0, (estLandTaxValue - (isLandMode ? 12000000 : 0)) * TAX_RATES.REAL_ESTATE_ACQUISITION.LAND);
-            const acqBuilding = estBuildingTaxValue * TAX_RATES.REAL_ESTATE_ACQUISITION.BUILDING;
-            const acqTotalMan = Math.max(0, Math.round((acqLand + acqBuilding) / 10000));
-
-            if (data.budget.acquisitionTax !== acqTotalMan) newUpdates.acquisitionTax = acqTotalMan;
-        }
-
-        if (Object.keys(newUpdates).length > 0) {
-            updateBudget(newUpdates);
-        }
-    }, [
-        data.budget.landPrice,
-        data.budget.buildingWorksCost,
-        data.budget.isAutoStampDuty,
-        data.budget.isAutoRegistrationTax,
-        data.budget.isAutoAcquisitionTax,
-        isLandMode,
-        isLeaseMode,
-        updateBudget
-    ]);
-
+    // 諸経費概算計算の呼び出し (Zustandストア内での自動計算をトリガー)
     const calculateBrokerageEstimate = () => {
-        // 新築および借地リースの場合は仲介手数料は発生しないため0万円
-        if (isLandMode || isLeaseMode) {
-            updateBudget({
-                brokerageFee: 0,
-                isAutoStampDuty: true,
-                isAutoRegistrationTax: true,
-                isAutoAcquisitionTax: true,
-            });
-            return;
-        }
-
-        const landPrice = (data.budget.landPrice || 0) * 10000;
-        const buildingCost = (data.budget.buildingWorksCost || 0) * 10000;
-        const brokerageBase = landPrice + buildingCost;
-        const brokerage = brokerageBase > 4000000 ? (brokerageBase * 0.03 + 60000) * 1.1 : 0;
-
         updateBudget({
-            brokerageFee: Math.round(brokerage / 10000),
             isAutoStampDuty: true,
             isAutoRegistrationTax: true,
             isAutoAcquisitionTax: true,
+            isAutoBrokerageFee: true,
         });
     };
 
     // 土地初期コストの選定：借地リースの場合は「土地敷金(landLeaseDeposit)」を計上、それ以外は「土地購入費(landPrice)」
     const landCostPart = isLeaseMode ? (data.budget.landLeaseDeposit || 0) : (data.budget.landPrice || 0);
 
+    // 総事業費 (Total Budget) の算出
+    // 借地リース以外のモード (新築および中古) では、土地購入に対する仲介手数料を正しく合算します
     const totalBudget =
         landCostPart +
         ((isLandMode || isLeaseMode) ? data.budget.demolitionCost : 0) +
@@ -109,9 +39,20 @@ export const Screen2_Budget: React.FC = () => {
         data.budget.acquisitionTax +
         data.budget.fireInsurancePrepaid +
         data.budget.waterContribution +
-        (!isLandMode && !isLeaseMode ? data.budget.brokerageFee : 0) + // 新築・借地時は仲介手数料なし
+        (!isLeaseMode ? data.budget.brokerageFee : 0) + // 借地時以外（新築・中古）は仲介手数料を合算する
         data.budget.otherInitialCost +
         ((isLandMode || isLeaseMode) ? data.budget.constructionInterest : 0);
+
+    // バリデーションチェックを実行して次へ進む
+    const handleNext = () => {
+        const validationErrors = validateBudget(data);
+        if (Object.keys(validationErrors).length > 0) {
+            setErrors(validationErrors);
+            return;
+        }
+        setErrors({});
+        nextStep();
+    };
 
     return (
         <div className="max-w-4xl mx-auto space-y-8 animate-in pb-20">
@@ -174,14 +115,14 @@ export const Screen2_Budget: React.FC = () => {
 
                 <Card title="諸経費 (初期費用)">
                     <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {/* 仲介手数料は中古物件投資モード（!isLandMode && !isLeaseMode）のときのみ表示 */}
-                        {!isLandMode && !isLeaseMode && (
+                        {/* 仲介手数料は土地を購入しない借地リースモード以外のときに表示 */}
+                        {!isLeaseMode && (
                             <InputGroup
                                 label="仲介手数料"
                                 type="number"
                                 unit="万円"
                                 value={data.budget.brokerageFee || ''}
-                                onChange={(e) => updateBudget({ brokerageFee: parseFloat(e.target.value) || 0 })}
+                                onChange={(e) => updateBudget({ brokerageFee: parseFloat(e.target.value) || 0, isAutoBrokerageFee: false })}
                             />
                         )}
                         <InputGroup
@@ -254,11 +195,23 @@ export const Screen2_Budget: React.FC = () => {
                 </div>
             </div>
 
+            {/* エラーメッセージの表示 */}
+            {Object.keys(errors).length > 0 && (
+                <div className="px-4 py-3 bg-rose-50 border border-rose-200 rounded-lg text-sm text-rose-700 font-medium">
+                    ⚠️ 入力内容に不足があります:
+                    <ul className="list-disc pl-5 mt-1 space-y-1">
+                        {Object.values(errors).map((err, i) => (
+                            <li key={i}>{err}</li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+
             <div className="flex justify-between pt-6 border-t border-slate-200">
                 <Button variant="ghost" onClick={prevStep} className="flex items-center gap-2">
                     <ArrowLeft className="h-4 w-4" /> 戻る
                 </Button>
-                <Button onClick={nextStep} className="flex items-center gap-2">
+                <Button onClick={handleNext} className="flex items-center gap-2">
                     次へ <ChevronRight className="h-4 w-4" />
                 </Button>
             </div>

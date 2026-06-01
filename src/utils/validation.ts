@@ -54,18 +54,30 @@ export const validateBudget = (data: SimulationData): ValidationErrors => {
 export const validateFunding = (data: SimulationData): ValidationErrors => {
     const errors: ValidationErrors = {};
 
-    // Check loan parameters
+    // 複数ローンのすべてに対して厳密なパラメータチェックを実行
     if (data.funding.loans && data.funding.loans.length > 0) {
-        const primary = data.funding.loans[0];
-        if ((primary.amount || 0) < 0) {
-            errors['funding.loan.amount'] = '借入額は0以上を入力してください';
-        }
-        if ((primary.duration || 0) <= 0 || (primary.duration || 0) > 50) {
-            errors['funding.loan.duration'] = '借入期間は1〜50年の範囲で入力してください';
-        }
-        if ((primary.rate || 0) < 0 || (primary.rate || 0) > 20) {
-            errors['funding.loan.rate'] = '金利は0〜20%の範囲で入力してください';
-        }
+        data.funding.loans.forEach((loan, idx) => {
+            const loanName = loan.name || `借入金 ${idx + 1}`;
+            if ((loan.amount || 0) < 0) {
+                errors[`funding.loan.${idx}.amount`] = `${loanName} の借入額は0以上を入力してください`;
+            }
+            if ((loan.duration || 0) <= 0 || (loan.duration || 0) > 50) {
+                errors[`funding.loan.${idx}.duration`] = `${loanName} の借入期間は1〜50年の範囲で入力してください`;
+            }
+            if ((loan.rate || 0) < 0 || (loan.rate || 0) > 20) {
+                errors[`funding.loan.${idx}.rate`] = `${loanName} の金利は0〜20%の範囲で入力してください`;
+            }
+        });
+    }
+
+    if ((data.funding.ownCapital || 0) < 0) {
+        errors['funding.ownCapital'] = '自己資金は0以上を入力してください';
+    }
+    if ((data.funding.cooperationMoney || 0) < 0) {
+        errors['funding.cooperationMoney'] = '建設協力金は0以上を入力してください';
+    }
+    if ((data.funding.securityDepositIn || 0) < 0) {
+        errors['funding.securityDepositIn'] = '敷金(預り金)は0以上を入力してください';
     }
 
     return errors;
@@ -77,7 +89,7 @@ export const validateFunding = (data: SimulationData): ValidationErrors => {
 export const validateRentRoll = (data: SimulationData): ValidationErrors => {
     const errors: ValidationErrors = {};
 
-    // Calculate total monthly rent from room types
+    // 部屋タイプ全体の総家賃のチェック
     const totalMonthlyRent = data.rentRoll.roomTypes?.reduce(
         (sum, rt) => sum + (rt.rent || 0) * (rt.count || 0), 0
     ) ?? 0;
@@ -86,11 +98,43 @@ export const validateRentRoll = (data: SimulationData): ValidationErrors => {
         errors['rentRoll.monthlyRent'] = '月額賃料を入力してください（部屋タイプごと）';
     }
 
+    // 部屋タイプごとのパラメータ（負数、空値、正の数）の厳格なループチェック
+    if (data.rentRoll.roomTypes && data.rentRoll.roomTypes.length > 0) {
+        data.rentRoll.roomTypes.forEach((rt, idx) => {
+            const name = rt.name || `部屋タイプ ${idx + 1}`;
+            if ((rt.count || 0) < 0) {
+                errors[`rentRoll.roomTypes.${idx}.count`] = `${name} の戸数は0以上を入力してください`;
+            }
+            if ((rt.areaM2 || 0) <= 0) {
+                errors[`rentRoll.roomTypes.${idx}.areaM2`] = `${name} の面積は0より大きい数値を入力してください`;
+            }
+            if ((rt.rent || 0) < 0) {
+                errors[`rentRoll.roomTypes.${idx}.rent`] = `${name} の賃料は0以上を入力してください`;
+            }
+            if ((rt.commonFee || 0) < 0) {
+                errors[`rentRoll.roomTypes.${idx}.commonFee`] = `${name} の共益費は0以上を入力してください`;
+            }
+            if (rt.cooperationMonths !== undefined && rt.cooperationMonths < 0) {
+                errors[`rentRoll.roomTypes.${idx}.cooperationMonths`] = `${name} の協力金月数は0以上を入力してください`;
+            }
+            if (rt.cooperationReturnYears !== undefined && rt.cooperationReturnYears < 0) {
+                errors[`rentRoll.roomTypes.${idx}.cooperationReturnYears`] = `${name} の協力金返還年数は0以上を入力してください`;
+            }
+        });
+    }
+
     const occupancy = data.rentRoll.occupancyRate;
     if (occupancy !== undefined && occupancy !== null) {
         if (occupancy < 0 || occupancy > 100) {
             errors['rentRoll.occupancyRate'] = '稼働率は0〜100%の範囲で入力してください';
         }
+    }
+
+    if ((data.rentRoll.parkingCount || 0) < 0) {
+        errors['rentRoll.parkingCount'] = '駐車場台数は0以上を入力してください';
+    }
+    if ((data.rentRoll.parkingFee || 0) < 0) {
+        errors['rentRoll.parkingFee'] = '駐車場料金は0以上を入力してください';
     }
 
     return errors;

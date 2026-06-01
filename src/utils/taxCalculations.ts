@@ -139,8 +139,6 @@ export const calculateIndividualTax = (
     taxableIncome: number,
     otherIncome: number = 0,
 ): number => {
-    if (taxableIncome <= 0) return 0; // 課税所得が0以下の場合は非課税
-
     // 日本の超過累進税率と控除額を適用して所得税額を算出するヘルパー
     const calcTax = (amount: number): number => {
         if (amount <= 0) return 0;
@@ -149,17 +147,32 @@ export const calculateIndividualTax = (
         return amount * bracket.rate - bracket.deduction;
     };
 
-    const totalIncome = taxableIncome + otherIncome;
-    const totalTax = calcTax(totalIncome);
     const otherTax = calcTax(otherIncome);
 
-    // 他所得がある場合の「限界税率の増分」として不動産分の所得税を正しく算出
-    const incomeTax = Math.max(0, totalTax - otherTax);
-    
-    // 不動産所得に対する住民税 (一律10%)
-    const residentTax = taxableIncome * RESIDENT_TAX_RATE;
-
-    return Math.floor(incomeTax + residentTax);
+    if (taxableIncome < 0) {
+        // --- 【損益通算による節税・還付効果の計算】 ---
+        // 他所得（給与等）から不動産の赤字分を差し引いた、新たな総所得に対する所得税
+        const netIncome = Math.max(0, otherIncome + taxableIncome);
+        const totalTaxWithLoss = calcTax(netIncome);
+        
+        // 所得税の還付額（マイナス値 = 節税効果）
+        const incomeTaxRefund = totalTaxWithLoss - otherTax;
+        
+        // 住民税の減額分（赤字額の10%が住民税から控除される）
+        const residentTaxSaving = taxableIncome * RESIDENT_TAX_RATE; // 負の値
+        
+        // 節税効果の合計（マイナス値として返し、ATCF = BTCF - TaxAmount でキャッシュが『増える』ようにする）
+        return Math.floor(incomeTaxRefund + residentTaxSaving);
+    } else {
+        // 通常の課税所得がある場合の計算
+        const totalIncome = taxableIncome + otherIncome;
+        const totalTax = calcTax(totalIncome);
+        
+        const incomeTax = Math.max(0, totalTax - otherTax);
+        const residentTax = taxableIncome * RESIDENT_TAX_RATE;
+        
+        return Math.floor(incomeTax + residentTax);
+    }
 };
 
 /**

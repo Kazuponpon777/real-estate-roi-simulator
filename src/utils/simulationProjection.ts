@@ -153,6 +153,7 @@ export const calculateLongTermProjection = (data: SimulationData, years: number 
             
         let currentVacancyRate = baseVacancyRate + (vacancyRiseRate * (y - 1));
         if (currentVacancyRate > 100) currentVacancyRate = 100;
+        if (currentVacancyRate < 0) currentVacancyRate = 0; // 下限ガードを追加
 
         const lostIncome = currentYearGrossIncome * (currentVacancyRate / 100);
         const effectiveIncome = currentYearGrossIncome - lostIncome;
@@ -307,6 +308,11 @@ export const calculateLongTermProjection = (data: SimulationData, years: number 
  * cashflows[0] = initial investment (negative), cashflows[1..n] = annual returns
  */
 export const calculateIRR = (cashflows: number[], guess: number = 0.1): number | null => {
+    // 異符号が混在していない場合は数学的にIRRが定義できないため、計算をスキップして即座にnullを返す
+    const hasPositive = cashflows.some(cf => cf > 0);
+    const hasNegative = cashflows.some(cf => cf < 0);
+    if (!hasPositive || !hasNegative) return null;
+
     const maxIterations = 100;
     const tolerance = 1e-7;
     let rate = guess;
@@ -328,7 +334,16 @@ export const calculateIRR = (cashflows: number[], guess: number = 0.1): number |
         if (rate < -1) rate = -0.99; // prevent divergence
     }
 
-    return rate; // Return best guess even if not converged
+    // イテレーション終了後、未収束の場合は安全に null を返す
+    let finalNpv = 0;
+    for (let t = 0; t < cashflows.length; t++) {
+        finalNpv += cashflows[t] / Math.pow(1 + rate, t);
+    }
+    if (Math.abs(finalNpv) >= tolerance) {
+        return null; 
+    }
+
+    return rate;
 };
 
 /**

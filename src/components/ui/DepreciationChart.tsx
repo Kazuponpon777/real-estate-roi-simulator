@@ -8,7 +8,7 @@
  */
 
 import React from 'react';
-import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, ReferenceDot } from 'recharts';
+import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, ReferenceDot, ReferenceArea } from 'recharts';
 import { formatCurrency } from '../../utils/formatters';
 
 interface ChartRow {
@@ -112,13 +112,25 @@ export const DepreciationChart: React.FC<DepreciationChartProps> = ({ data, dead
                         activeDot={{ r: 6 }} 
                     />
 
+                    {/* デッドクロス発生後の危険ゾーン背景シェーディング (ソフトレッドでゾーニング) */}
+                    {deadCrossYear && (
+                        <ReferenceArea 
+                            x1={deadCrossYear} 
+                            x2={data[data.length - 1]?.year} 
+                            fill="#f43f5e" 
+                            fillOpacity={0.06} 
+                            stroke="none"
+                        />
+                    )}
+
                     {/* デッドクロス交差補助線 (点線: 赤) */}
                     {deadCrossYear && (
                         <ReferenceLine 
                             x={deadCrossYear} 
                             stroke="#f43f5e" 
+                            strokeWidth={1.5}
                             strokeDasharray="4 4" 
-                            label={{ value: `デッドクロス (${deadCrossYear}年目)`, position: 'top', fill: '#f43f5e', fontSize: 10, fontWeight: 'bold' }} 
+                            label={{ value: `⚠️ デッドクロス突入 (${deadCrossYear}年目)`, position: 'top', fill: '#e11d48', fontSize: 10, fontWeight: 'extrabold' }} 
                         />
                     )}
 
