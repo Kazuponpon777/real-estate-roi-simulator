@@ -38,6 +38,7 @@ export const DEMO_DATA: SimulationData = {
         brokerageFee: 280, // (8500 * 3% + 6) * 1.1 roughly
         otherInitialCost: 100,
         constructionInterest: 50,
+        landLeaseDeposit: 0, // 借地リース用土地保証金・一時金デフォルト値
     },
     funding: {
         ownCapital: 1000,
@@ -49,8 +50,8 @@ export const DEMO_DATA: SimulationData = {
     },
     rentRoll: {
         roomTypes: [
-            { id: "1", name: "1K (25㎡)", count: 6, areaM2: 25.0, rent: 89000, commonFee: 5000 },
-            { id: "2", name: "1LDK (40㎡)", count: 3, areaM2: 40.0, rent: 135000, commonFee: 8000 }
+            { id: "1", name: "1K (25㎡)", count: 6, areaM2: 25.0, rent: 89000, commonFee: 5000, cooperationMonths: 120, cooperationReturnYears: 20 },
+            { id: "2", name: "1LDK (40㎡)", count: 3, areaM2: 40.0, rent: 135000, commonFee: 8000, cooperationMonths: 120, cooperationReturnYears: 20 }
         ],
         parkingCount: 5,
         parkingFee: 10000,
@@ -86,5 +87,6 @@ export const DEMO_DATA: SimulationData = {
         exitCapRate: 6.0,
         buildingRatio: 50,              // 建物比率 (50%)
         usefulLifeMethod: 'simplified', // 償却期間算出方法 (簡便法)
+        landLeaseFee: 0, // 借地リース用月額地代デフォルト値
     }
 };

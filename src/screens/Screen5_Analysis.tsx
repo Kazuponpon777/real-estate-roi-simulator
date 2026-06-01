@@ -66,11 +66,18 @@ export const Screen5_Analysis: React.FC = () => {
 
     // 1. 総事業費（自己資金 ＋ 借入額 ＋ その他初期諸経費）の算出
     // 【バグ修正】新築時のみ本体工事費や解体費用・中金利を合算し、中古時は購入価格と諸経費のみにする（データ混在防止）
+    // 1. 総事業費（自己資金 ＋ 借入額 ＋ その他初期諸経費）の算出
+    // 【バグ修正】新築・借地・中古のモードごとに、工事費や保証金を正確に合算して土地価格を処理
     const isLandMode = data.mode === 'land_new';
+    const isLeaseMode = data.mode === 'land_lease';
+
+    // 借地リースの場合は土地を購入しないため、地主への保証金/権利金を初期投資総額のベースとする
+    const landInitialCost = isLeaseMode ? (data.budget.landLeaseDeposit ?? 0) : data.budget.landPrice;
+
     const totalBudget =
-        data.budget.landPrice +
+        landInitialCost +
         (isLandMode ? data.budget.demolitionCost : 0) +
-        (isLandMode ? data.budget.buildingWorksCost : 0) +
+        (isLandMode || isLeaseMode ? data.budget.buildingWorksCost : 0) + // 借地リースも新築なので本体工事費を含む
         data.budget.stampDuty +
         data.budget.registrationTax +
         data.budget.acquisitionTax +
@@ -106,9 +113,14 @@ export const Screen5_Analysis: React.FC = () => {
     const annualBuildingMaintenance = data.expenses.buildingMaintenance * 12;
     const annualMaintenanceReserve = data.expenses.maintenanceReserve * 12; // Assuming input is monthly total
 
+    // 借地リースの場合、土地の固定資産税・都市計画税は地主負担のため0円とする
+    const fixedAssetTaxLand = isLeaseMode ? 0 : data.expenses.fixedAssetTaxLand;
+    const cityPlanningTaxLand = isLeaseMode ? 0 : data.expenses.cityPlanningTaxLand;
+    const landLeaseFeeAnnual = isLeaseMode ? (data.advancedSettings?.landLeaseFee ?? 0) * 12 : 0; // 地主への支払地代(年額)
+
     const annualTaxes =
-        data.expenses.fixedAssetTaxLand +
-        data.expenses.cityPlanningTaxLand +
+        fixedAssetTaxLand +
+        cityPlanningTaxLand +
         data.expenses.fixedAssetTaxBuilding +
         data.expenses.cityPlanningTaxBuilding;
 
@@ -118,7 +130,8 @@ export const Screen5_Analysis: React.FC = () => {
         annualMaintenanceReserve +
         annualTaxes +
         data.expenses.fireInsuranceAnnual +
-        data.expenses.otherExpenses;
+        data.expenses.otherExpenses +
+        landLeaseFeeAnnual; // 地代を運営経費に算入
 
     // 4. Net Operating Income (NOI)
     const noi = effectiveGrossIncome - totalOpex;
@@ -131,7 +144,19 @@ export const Screen5_Analysis: React.FC = () => {
     });
 
     // 6. Cash Flow
-    const beforeTaxCashFlow = noi - annualDebtService;
+    // 【借地リース特別ルール】預かった建設協力金は毎年均等返還するため、初年度の返還金を手残りから差し引きます
+    let firstYearCooperationReturnYen = 0;
+    if (isLeaseMode) {
+        data.rentRoll.roomTypes.forEach(r => {
+            const returnYears = r.cooperationReturnYears ?? 20;
+            if (returnYears > 0) {
+                const totalCoop = r.rent * r.count * (r.cooperationMonths ?? 0);
+                firstYearCooperationReturnYen += totalCoop / returnYears;
+            }
+        });
+    }
+
+    const beforeTaxCashFlow = noi - annualDebtService - firstYearCooperationReturnYen;
 
     // 7. Yields
     const grossYield = totalBudgetYen > 0 ? (annualPotentialGrossIncome / totalBudgetYen) * 100 : 0;
@@ -188,10 +213,11 @@ export const Screen5_Analysis: React.FC = () => {
         { name: 'BM・清掃', value: annualBuildingMaintenance },
         { name: '修繕積立', value: annualMaintenanceReserve },
         { name: '固都税', value: annualTaxes },
+        ...(isLeaseMode ? [{ name: '地主支払地代', value: landLeaseFeeAnnual }] : []),
         { name: 'その他', value: data.expenses.fireInsuranceAnnual + data.expenses.otherExpenses },
     ];
 
-    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#EC4899'];
 
     return (
         <div className="max-w-6xl mx-auto space-y-8 animate-in pb-20">
@@ -332,6 +358,24 @@ export const Screen5_Analysis: React.FC = () => {
                             <span className="text-slate-700">▲ {formatCurrency(totalOpex)}</span>
                         </div>
 
+                        {/* 借地リース特別開示情報（地代および土地の固都税免除） */}
+                        {isLeaseMode && (
+                            <div className="bg-slate-50 p-3 rounded-lg text-xs space-y-1.5 ml-4 border border-slate-100 no-print">
+                                <div className="flex justify-between text-slate-500">
+                                    <span>・地主への支払地代 (年額)</span>
+                                    <span>▲ {formatCurrency(landLeaseFeeAnnual)}</span>
+                                </div>
+                                <div className="flex justify-between text-slate-500">
+                                    <span>・土地固定資産税・都市計画税</span>
+                                    <span className="text-emerald-600 font-semibold">0 円 (地権者負担)</span>
+                                </div>
+                                <div className="flex justify-between text-slate-500">
+                                    <span>・建物固定資産税・都市計画税</span>
+                                    <span>▲ {formatCurrency(data.expenses.fixedAssetTaxBuilding + data.expenses.cityPlanningTaxBuilding)}</span>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="flex justify-between items-center py-2 border-b border-slate-100 bg-indigo-50/50 px-2 -mx-2 rounded">
                             <span className="text-indigo-900 font-bold">営業純利益 (NOI)</span>
                             <span className="text-xl font-bold text-indigo-900">{formatCurrency(noi)}</span>
@@ -341,6 +385,14 @@ export const Screen5_Analysis: React.FC = () => {
                             <span className="text-slate-500">年間返済額 (ADS)</span>
                             <span className="text-slate-700">▲ {formatCurrency(annualDebtService)}</span>
                         </div>
+
+                        {/* 借地リース特別開示情報（建設協力金の均等返還金支出） */}
+                        {isLeaseMode && firstYearCooperationReturnYen > 0 && (
+                            <div className="flex justify-between items-center py-2 border-b border-slate-100 pl-4 text-sm bg-amber-50/30 px-2 -mx-2 rounded">
+                                <span className="text-amber-800 font-semibold">建設協力金返還額 (年額)</span>
+                                <span className="text-amber-800 font-mono">▲ {formatCurrency(firstYearCooperationReturnYen)}</span>
+                            </div>
+                        )}
 
                         <div className="flex justify-between items-center py-3 bg-green-50 px-4 -mx-4 rounded-lg mt-2">
                             <span className="text-green-900 font-bold text-lg">税引前キャッシュフロー</span>
@@ -485,7 +537,10 @@ export const Screen5_Analysis: React.FC = () => {
                                 <Legend />
                                 <Bar dataKey="effectiveIncome" name="有効総収入(EGI)" fill="#818cf8" radius={[4, 4, 0, 0]} barSize={20} />
                                 <Bar dataKey="opex" name="運営費(OPEX)" stackId="a" fill="#f87171" />
-                                <Bar dataKey="tmT" name="ローン返済(ADS)" stackId="a" fill="#fbbf24" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="tmT" name="ローン返済(ADS)" stackId="a" fill="#fbbf24" />
+                                {data.mode === 'land_lease' && (
+                                    <Bar dataKey="cooperationReturn" name="建設協力金返還" stackId="a" fill="#ec4899" radius={[4, 4, 0, 0]} />
+                                )}
                                 <Line type="monotone" dataKey="btcf" name="手残り(BTCF)" stroke="#10b981" strokeWidth={3} dot={{ r: 2 }} />
                             </ComposedChart>
                         </ResponsiveContainer>

@@ -2,9 +2,9 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { TaxMode } from '../utils/taxCalculations';
 
-// --- Types ---
+// --- タイプ定義 ---
 
-export type SimulationMode = 'land_new' | 'investment_used';
+export type SimulationMode = 'land_new' | 'investment_used' | 'land_lease'; // land_lease: 借地リース (地主から土地を借りて上物を建てて貸し出す) モードを追加
 
 export interface PropertyDocument {
     id: string;
@@ -65,6 +65,9 @@ export interface ProjectBudget {
     brokerageFee: number; // 仲介手数料 (added commonly)
     otherInitialCost: number;
     constructionInterest: number; // 工事中金利
+    
+    // --- 借地リース用の追加予算項目 ---
+    landLeaseDeposit: number;     // 土地権利金・地主への保証金 万円 (借地リース用)
 }
 
 export interface Loan {
@@ -89,6 +92,10 @@ export interface RoomType {
     areaM2: number;
     rent: number; // 円 (Monthly)
     commonFee: number; // 円 (Monthly)
+
+    // --- 借地リース 建設協力金用の追加パラメータ ---
+    cooperationMonths?: number;      // 建設協力金算出基準 (家賃の◯ヶ月分、例: 120ヶ月)
+    cooperationReturnYears?: number; // 建設協力金のテナントへの返還期間 (年、例: 20年)
 }
 
 export interface RentRoll {
@@ -140,6 +147,9 @@ export interface AdvancedSettings {
     usefulLifeMethod: 'statutory' | 'simplified' | 'custom'; // 耐用年数算出方法 ('statutory': 法定耐用年数, 'simplified': 簡便法, 'custom': カスタム入力)
     customBuildingUsefulLife?: number;  // カスタム時の建物耐用年数 (年)
     customEquipmentUsefulLife?: number; // カスタム時の設備耐用年数 (年)
+
+    // --- 借地リース用の追加設定プロパティ ---
+    landLeaseFee: number;         // 地主へ支払う月額地代 (円)
 }
 
 export interface SimulationData {
@@ -221,6 +231,7 @@ const INITIAL_DATA: SimulationData = {
         brokerageFee: 0,
         otherInitialCost: 0,
         constructionInterest: 0,
+        landLeaseDeposit: 0, // 土地保証金デフォルト値 (万円)
     },
 
     funding: {
@@ -234,7 +245,7 @@ const INITIAL_DATA: SimulationData = {
 
     rentRoll: {
         roomTypes: [
-            { id: '1', name: '1K', count: 0, areaM2: 25, rent: 60000, commonFee: 5000 }
+            { id: '1', name: '1K', count: 0, areaM2: 25, rent: 60000, commonFee: 5000, cooperationMonths: 120, cooperationReturnYears: 20 }
         ],
         parkingCount: 0,
         parkingFee: 0,
@@ -271,6 +282,7 @@ const INITIAL_DATA: SimulationData = {
         exitCapRate: 6.0,
         buildingRatio: 50,           // 中古物件購入における建物割合のデフォルト値 (50%)
         usefulLifeMethod: 'simplified', // 償却期間算出方法のデフォルト値 (簡便法)
+        landLeaseFee: 0,             // 月額地代デフォルト値 (円)
     },
 };
 

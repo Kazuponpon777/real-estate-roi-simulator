@@ -11,7 +11,7 @@ import { DocumentManager } from '../components/ui/DocumentManager';
 import type { PropertyDocument } from '../stores/useSimulationStore';
 
 export const Screen1_Property: React.FC = () => {
-    const { data, updateProperty, updateAdvancedSettings, nextStep, prevStep } = useSimulationStore();
+    const { data, updateProperty, updateBudget, updateAdvancedSettings, nextStep, prevStep } = useSimulationStore();
     const [activeTab, setActiveTab] = useState<'land' | 'building'>('land');
     const [errors, setErrors] = useState<ValidationErrors>({});
 
@@ -74,6 +74,34 @@ export const Screen1_Property: React.FC = () => {
                                 onChange={(e) => updateProperty({ address: e.target.value })}
                                 className="md:col-span-2"
                             />
+
+                            {/* 【借地リース特別UI】地主への月額地代および土地一時金/保証金を入力するフォーム */}
+                            {data.mode === 'land_lease' && (
+                                <div className="md:col-span-2 grid md:grid-cols-2 gap-6 p-4 bg-indigo-50/30 rounded-xl border border-indigo-100/50">
+                                    <InputGroup
+                                        label="地主への月額地代"
+                                        type="number"
+                                        unit="円/月"
+                                        help="地権者へ毎月支払う土地の賃料（地代）です。これは運営費（経費）に自動加算されます。"
+                                        value={data.advancedSettings?.landLeaseFee || ''}
+                                        onChange={(e) => {
+                                            const val = parseFloat(e.target.value);
+                                            updateAdvancedSettings({ landLeaseFee: isNaN(val) ? 0 : val });
+                                        }}
+                                    />
+                                    <InputGroup
+                                        label="土地一時金・保証金"
+                                        type="number"
+                                        unit="万円"
+                                        help="契約時に地主へ支払う権利金や預託する保証金です。保証金は運用最終年に返還回収される前提でIRR計算等に反映されます。"
+                                        value={data.budget.landLeaseDeposit || ''}
+                                        onChange={(e) => {
+                                            const val = parseFloat(e.target.value);
+                                            updateBudget({ landLeaseDeposit: isNaN(val) ? 0 : val });
+                                        }}
+                                    />
+                                </div>
+                            )}
 
                             <div className="md:col-span-2">
                                 <label className="text-sm font-semibold text-slate-600 block mb-2">地図確認</label>

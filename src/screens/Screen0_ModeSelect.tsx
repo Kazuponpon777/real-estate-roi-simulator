@@ -1,5 +1,5 @@
 import { useRef, type ChangeEvent } from 'react';
-import { Building2, Search, ArrowRight, Upload, FileJson, PlayCircle } from 'lucide-react';
+import { Building2, Search, ArrowRight, Upload, FileJson, PlayCircle, Store } from 'lucide-react';
 import { useSimulationStore } from '../stores/useSimulationStore';
 import type { SimulationMode } from '../stores/useSimulationStore';
 import { Card } from '../components/ui/Card';
@@ -115,20 +115,27 @@ export const Screen0_ModeSelect: React.FC = () => {
                 </div>
             </div>
 
-            <div className="grid gap-8 md:grid-cols-2">
+            <div className="grid gap-8 md:grid-cols-3">
                 <ModeCard
                     title="土地活用 (新築)"
-                    description="土地オーナー様向け。更地からの建築企画、事業収支をシミュレーションします。"
+                    description="更地からの新築建築企画、土地持ちオーナー様の事業収支シミュレーションに。"
                     icon={Building2}
                     onClick={() => handleSelect('land_new')}
                     active={data.mode === 'land_new'}
                 />
                 <ModeCard
                     title="収益物件購入 (中古)"
-                    description="投資家様向け。既存の土地付き建物の購入・運用収支をシミュレーションします。"
+                    description="既存の土地付き収益ビル・マンションの購入・運用収支シミュレーションに。"
                     icon={Search}
                     onClick={() => handleSelect('investment_used')}
                     active={data.mode === 'investment_used'}
+                />
+                <ModeCard
+                    title="借地リース (テナント開発)"
+                    description="地権者から借地し、上物を自社建設してテナントへリース・サブリースする事業スキームに。"
+                    icon={Store}
+                    onClick={() => handleSelect('land_lease')}
+                    active={data.mode === 'land_lease'}
                 />
             </div>
         </div>

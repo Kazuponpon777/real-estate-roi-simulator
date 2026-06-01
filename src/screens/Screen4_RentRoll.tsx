@@ -18,7 +18,9 @@ export const Screen4_RentRoll: React.FC = () => {
             count: 1,
             areaM2: 25,
             rent: 65000,
-            commonFee: 5000
+            commonFee: 5000,
+            cooperationMonths: 120, // 借地リース用：建設協力金家賃月数デフォルト値
+            cooperationReturnYears: 20 // 借地リース用：建設協力金返還年数デフォルト値
         };
         updateRentRoll({ roomTypes: [...data.rentRoll.roomTypes, newRoom] });
     };
@@ -37,6 +39,12 @@ export const Screen4_RentRoll: React.FC = () => {
     const totalMonthlyRent = data.rentRoll.roomTypes.reduce((acc, r) => acc + (r.rent + r.commonFee) * r.count, 0);
     const totalMonthlyParking = data.rentRoll.parkingCount * data.rentRoll.parkingFee;
     const grossMonthlyIncome = totalMonthlyRent + totalMonthlyParking;
+
+    // 建設協力金総額の計算 (借地リース用)
+    const totalCooperationMoney = data.rentRoll.roomTypes.reduce((acc, r) => {
+        const months = r.cooperationMonths ?? 0;
+        return acc + (r.rent * r.count * months);
+    }, 0);
 
     // Req says "Others Revenue Condition". Let's assume it's included roughly.
     const annualPotentialGrossIncome = (grossMonthlyIncome + data.rentRoll.otherRevenue + (data.rentRoll.solarPowerIncome || 0)) * 12;
@@ -58,6 +66,13 @@ export const Screen4_RentRoll: React.FC = () => {
                                     <th className="px-4 py-3">面積(㎡)</th>
                                     <th className="px-4 py-3">賃料(円)</th>
                                     <th className="px-4 py-3">共益費(円)</th>
+                                    {data.mode === 'land_lease' && (
+                                        <>
+                                            <th className="px-4 py-3 text-right">協力金(ヶ月)</th>
+                                            <th className="px-4 py-3 text-right">返還期間(年)</th>
+                                            <th className="px-4 py-3 text-right">協力金総額(円)</th>
+                                        </>
+                                    )}
                                     <th className="px-4 py-3">小計(円)</th>
                                     <th className="px-4 py-3 rounded-r-lg w-10"></th>
                                 </tr>
@@ -77,7 +92,7 @@ export const Screen4_RentRoll: React.FC = () => {
                                                 type="number"
                                                 className="w-20 bg-transparent border rounded px-2 py-1 text-right focus:border-blue-500 focus:outline-none"
                                                 value={room.count}
-                                                onChange={(e) => updateRoomType(room.id, { count: parseFloat(e.target.value) })}
+                                                onChange={(e) => updateRoomType(room.id, { count: parseFloat(e.target.value) || 0 })}
                                             />
                                         </td>
                                         <td className="px-4 py-2">
@@ -85,7 +100,7 @@ export const Screen4_RentRoll: React.FC = () => {
                                                 type="number"
                                                 className="w-20 bg-transparent border rounded px-2 py-1 text-right focus:border-blue-500 focus:outline-none"
                                                 value={room.areaM2}
-                                                onChange={(e) => updateRoomType(room.id, { areaM2: parseFloat(e.target.value) })}
+                                                onChange={(e) => updateRoomType(room.id, { areaM2: parseFloat(e.target.value) || 0 })}
                                             />
                                         </td>
                                         <td className="px-4 py-2">
@@ -93,7 +108,7 @@ export const Screen4_RentRoll: React.FC = () => {
                                                 type="number"
                                                 className="w-28 bg-transparent border rounded px-2 py-1 text-right focus:border-blue-500 focus:outline-none"
                                                 value={room.rent}
-                                                onChange={(e) => updateRoomType(room.id, { rent: parseFloat(e.target.value) })}
+                                                onChange={(e) => updateRoomType(room.id, { rent: parseFloat(e.target.value) || 0 })}
                                             />
                                         </td>
                                         <td className="px-4 py-2">
@@ -101,9 +116,32 @@ export const Screen4_RentRoll: React.FC = () => {
                                                 type="number"
                                                 className="w-24 bg-transparent border rounded px-2 py-1 text-right focus:border-blue-500 focus:outline-none"
                                                 value={room.commonFee}
-                                                onChange={(e) => updateRoomType(room.id, { commonFee: parseFloat(e.target.value) })}
+                                                onChange={(e) => updateRoomType(room.id, { commonFee: parseFloat(e.target.value) || 0 })}
                                             />
                                         </td>
+                                        {data.mode === 'land_lease' && (
+                                            <>
+                                                <td className="px-4 py-2">
+                                                    <input
+                                                        type="number"
+                                                        className="w-20 bg-transparent border rounded px-2 py-1 text-right focus:border-blue-500 focus:outline-none"
+                                                        value={room.cooperationMonths ?? 120}
+                                                        onChange={(e) => updateRoomType(room.id, { cooperationMonths: parseFloat(e.target.value) || 0 })}
+                                                    />
+                                                </td>
+                                                <td className="px-4 py-2">
+                                                    <input
+                                                        type="number"
+                                                        className="w-20 bg-transparent border rounded px-2 py-1 text-right focus:border-blue-500 focus:outline-none"
+                                                        value={room.cooperationReturnYears ?? 20}
+                                                        onChange={(e) => updateRoomType(room.id, { cooperationReturnYears: parseFloat(e.target.value) || 0 })}
+                                                    />
+                                                </td>
+                                                <td className="px-4 py-2 text-right text-slate-600">
+                                                    {((room.rent * room.count * (room.cooperationMonths ?? 0))).toLocaleString()}
+                                                </td>
+                                            </>
+                                        )}
                                         <td className="px-4 py-2 font-medium text-right text-slate-700">
                                             {((room.rent + room.commonFee) * room.count).toLocaleString()}
                                         </td>
@@ -263,12 +301,24 @@ export const Screen4_RentRoll: React.FC = () => {
                     </div>
                 </Card>
 
-                <div className="bg-indigo-600 text-white p-6 rounded-xl shadow-lg">
-                    <span className="text-indigo-100 text-sm uppercase tracking-wider font-bold">年間満室想定収入 (Gross Potential Income)</span>
-                    <div className="text-3xl font-bold mt-1">{formatManYen(annualPotentialGrossIncome / 10000)} 万円</div>
-                    <p className="text-sm text-indigo-200 mt-2">
-                        月額: {(grossMonthlyIncome + data.rentRoll.otherRevenue + (data.rentRoll.solarPowerIncome || 0)).toLocaleString()} 円 × 12ヶ月
-                    </p>
+                <div className={`grid gap-6 ${data.mode === 'land_lease' ? 'md:grid-cols-2' : ''}`}>
+                    <div className="bg-indigo-600 text-white p-6 rounded-xl shadow-lg">
+                        <span className="text-indigo-100 text-sm uppercase tracking-wider font-bold">年間満室想定収入 (Gross Potential Income)</span>
+                        <div className="text-3xl font-bold mt-1">{formatManYen(annualPotentialGrossIncome / 10000)} 万円</div>
+                        <p className="text-sm text-indigo-200 mt-2">
+                            月額: {(grossMonthlyIncome + data.rentRoll.otherRevenue + (data.rentRoll.solarPowerIncome || 0)).toLocaleString()} 円 × 12ヶ月
+                        </p>
+                    </div>
+
+                    {data.mode === 'land_lease' && (
+                        <div className="bg-emerald-600 text-white p-6 rounded-xl shadow-lg">
+                            <span className="text-emerald-100 text-sm uppercase tracking-wider font-bold">建設協力金 調達総額</span>
+                            <div className="text-3xl font-bold mt-1">{formatManYen(totalCooperationMoney / 10000)} 万円</div>
+                            <p className="text-sm text-emerald-200 mt-2">
+                                テナントから無利息で預かり、初期建築資金に充当されます。設定された返還期間で均等返還されます。
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
 

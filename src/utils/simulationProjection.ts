@@ -31,18 +31,31 @@ export interface AnnualData {
     // Investment Metrics (Phase 2)
     dscr: number; // NOI / ADS
     ccr: number; // BTCF / Equity
+    cooperationReturn?: number; // 借地リース用：建設協力金の年間返還額
 }
 
 export const calculateLongTermProjection = (data: SimulationData, years: number = 35): AnnualData[] => {
     const projection: AnnualData[] = [];
 
+    const isLeaseMode = data.mode === 'land_lease';
+    const isUsed = data.mode === 'investment_used';
+
+    // --- テナント建設協力金の自動計算 (借地リース用) ---
+    // 各部屋の「家賃(月額) × 戸数 × 預り月数」を合算
+    let totalCooperationMoneyYen = 0;
+    if (isLeaseMode) {
+        data.rentRoll.roomTypes.forEach(r => {
+            const months = r.cooperationMonths ?? 0;
+            totalCooperationMoneyYen += r.rent * r.count * months;
+        });
+    }
+
+    // 自己資金のマイナス（自己資金 ＋ テナント建設協力金 を初期調達として扱う）
     const ownCapitalYen = data.funding.ownCapital * 10000;
     let currentAccumulatedCF = -ownCapitalYen;
 
-    const isUsed = data.mode === 'investment_used';
-
     // --- 建物価格の決定 ---
-    // 中古物件の場合は、購入価格(landPrice)に建物割合を掛けて建物価格を算出。新築の場合は本体工事費を使用。
+    // 中古の場合は購入価格×建物割合、新築・借地リースの場合は本体工事費を使用
     const buildingCostYen = isUsed
         ? (data.budget.landPrice * (data.advancedSettings?.buildingRatio ?? 50) / 100) * 10000
         : data.budget.buildingWorksCost * 10000;
@@ -51,7 +64,7 @@ export const calculateLongTermProjection = (data: SimulationData, years: number 
     const buildingAge = data.advancedSettings?.buildingAge ?? 0;
     const usefulLifeMethod = data.advancedSettings?.usefulLifeMethod ?? 'simplified';
 
-    // 減価償却費の計算 (耐用年数算出方法とカスタム入力に対応)
+    // 減価償却費の計算
     const depInfo: DepreciationInfo = calculateDepreciation(
         data.property.structure,
         buildingCostYen,
@@ -90,15 +103,21 @@ export const calculateLongTermProjection = (data: SimulationData, years: number 
             data.rentRoll.otherRevenue) * 12);
 
     // --- 固定運営費 (OPEX) ---
+    // 【借地リース特別ルール】土地の固定資産税・都市計画税は地主負担（自社は支払わないため0円）
+    const fixedAssetTaxLand = isLeaseMode ? 0 : data.expenses.fixedAssetTaxLand;
+    const cityPlanningTaxLand = isLeaseMode ? 0 : data.expenses.cityPlanningTaxLand;
+    const landLeaseFeeAnnual = isLeaseMode ? (data.advancedSettings?.landLeaseFee ?? 0) * 12 : 0; // 地主へ支払う年間地代
+
     const fixedOpexPart =
         (data.expenses.buildingMaintenance * 12) +
         (data.expenses.maintenanceReserve * 12) +
-        data.expenses.fixedAssetTaxLand +
-        data.expenses.cityPlanningTaxLand +
+        fixedAssetTaxLand +
+        cityPlanningTaxLand +
         data.expenses.fixedAssetTaxBuilding +
         data.expenses.cityPlanningTaxBuilding +
         data.expenses.fireInsuranceAnnual +
-        data.expenses.otherExpenses;
+        data.expenses.otherExpenses +
+        landLeaseFeeAnnual; // 年間地代を運営費に加算
 
     for (let y = 1; y <= years; y++) {
         // === 1. 収入計算 ===
@@ -182,13 +201,27 @@ export const calculateLongTermProjection = (data: SimulationData, years: number 
             totalBalance += l.remainingBalance;
         });
 
-        // === 4. BTCF ===
-        const btcf = noi - annualAds;
+        // === 4. テナント建設協力金返却の算出 (借地リース用) ===
+        // 【借地リース特別ルール】預かった建設協力金は返還期間にわたり毎年テナントに均等返還します
+        let annualCooperationReturnYen = 0;
+        if (isLeaseMode) {
+            data.rentRoll.roomTypes.forEach(r => {
+                const returnYears = r.cooperationReturnYears ?? 20;
+                if (y <= returnYears) {
+                    const totalCoop = r.rent * r.count * (r.cooperationMonths ?? 0);
+                    annualCooperationReturnYen += totalCoop / returnYears;
+                }
+            });
+        }
 
-        // === 5. Depreciation & Tax (Phase 1) ===
+        // === 5. BTCF (税引前キャッシュフロー) ===
+        // 営業純利益 (NOI) - ローン返済 (ADS) - 建設協力金返還額
+        const btcf = noi - annualAds - annualCooperationReturnYen;
+
+        // === 6. 減価償却費 ＆ 課税所得 (Phase 1) ===
         const yearDepreciation = getYearlyDepreciation(depInfo, y);
 
-        // Taxable income = NOI - depreciation - interest (not principal!)
+        // 課税所得 = NOI - 減価償却費 - ローン金利 (※元金返済および建設協力金返済は経費外支出)
         const taxableIncome = noi - yearDepreciation - annualInterest;
 
         let taxAmount = 0;
@@ -198,13 +231,13 @@ export const calculateLongTermProjection = (data: SimulationData, years: number 
             taxAmount = calculateCorporateTax(taxableIncome);
         }
 
-        // ATCF = BTCF - Tax
+        // ATCF (税引後キャッシュフロー) = BTCF - 所得税・住民税
         const atcf = btcf - taxAmount;
 
-        // === 6. Accumulated CF (now based on ATCF) ===
+        // === 7. 累積キャッシュフロー (ATCFベース) ===
         currentAccumulatedCF += atcf;
 
-        // === 7. Investment Metrics ===
+        // === 8. 投資分析指標 ===
         const dscr = annualAds > 0 ? noi / annualAds : Infinity;
         const ccr = ownCapitalYen > 0 ? btcf / ownCapitalYen : 0;
 
@@ -227,6 +260,7 @@ export const calculateLongTermProjection = (data: SimulationData, years: number 
             accumulatedCashFlow: currentAccumulatedCF,
             dscr,
             ccr,
+            cooperationReturn: annualCooperationReturnYen, // 借地リース用：建設協力金の年間返還額をマージ
         });
     }
 
@@ -283,15 +317,21 @@ export const getInvestmentMetrics = (
     let netSaleProceeds = 0;
     if (finalYear) {
         const exitCapRate = data.advancedSettings?.exitCapRate ?? 6.0;
+        const isLeaseMode = data.mode === 'land_lease';
         const isUsed = data.mode === 'investment_used';
         
-        // 建物・土地の按分コスト (中古物件と新築物件のバグを修正)
+        // 建物・土地の按分コスト (借地リースモードも考慮して完全に算出)
         const buildingCost = isUsed
             ? (data.budget.landPrice * (data.advancedSettings?.buildingRatio ?? 50) / 100) * 10000
             : data.budget.buildingWorksCost * 10000;
-        const landCost = isUsed
-            ? (data.budget.landPrice * (100 - (data.advancedSettings?.buildingRatio ?? 50)) / 100) * 10000
-            : data.budget.landPrice * 10000;
+            
+        // 土地代の処理: 借地リースの場合は土地を購入しないため「土地売却額」はありませんが、
+        // 預けていた土地一時金/保証金(landLeaseDeposit)が期末に戻るため、それを土地の回収価値(landCost)として代入します
+        const landCost = isLeaseMode
+            ? (data.budget.landLeaseDeposit ?? 0) * 10000
+            : (isUsed
+                ? (data.budget.landPrice * (100 - (data.advancedSettings?.buildingRatio ?? 50)) / 100) * 10000
+                : data.budget.landPrice * 10000);
 
         const depInfo: DepreciationInfo = calculateDepreciation(
             data.property.structure,
