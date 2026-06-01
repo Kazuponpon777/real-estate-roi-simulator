@@ -16,12 +16,25 @@ export const generateCSV = (data: SimulationData): string => {
     addRow('Property', 'Land Area (M2)', data.property.landAreaM2, 'm2');
     addRow('Property', 'Bulding Structure', data.property.structure);
 
-    // Budget
-    addRow('Budget', 'Land Price', data.budget.landPrice, 'Man-yen');
-    addRow('Budget', 'Construction Cost', data.budget.buildingWorksCost, 'Man-yen');
-    addRow('Budget', 'Total Initial Cost',
-        data.budget.landPrice + data.budget.buildingWorksCost + data.budget.otherInitialCost + data.budget.brokerageFee,
-        'Man-yen');
+    // 投資モードに基づいた正確な総事業費を算出
+    const isLandMode = data.mode === 'land_new';
+    const isLeaseMode = data.mode === 'land_lease';
+    const landCostPart = isLeaseMode ? (data.budget.landLeaseDeposit || 0) : (data.budget.landPrice || 0);
+
+    const totalBudget =
+        landCostPart +
+        ((isLandMode || isLeaseMode) ? data.budget.demolitionCost : 0) +
+        ((isLandMode || isLeaseMode) ? data.budget.buildingWorksCost : 0) +
+        data.budget.stampDuty +
+        data.budget.registrationTax +
+        data.budget.acquisitionTax +
+        data.budget.fireInsurancePrepaid +
+        data.budget.waterContribution +
+        (!isLandMode && !isLeaseMode ? data.budget.brokerageFee : 0) + // 新築・借地時は仲介手数料なし
+        data.budget.otherInitialCost +
+        ((isLandMode || isLeaseMode) ? data.budget.constructionInterest : 0);
+
+    addRow('Budget', 'Total Initial Cost', totalBudget, 'Man-yen');
 
     // Funding
     const totalLoans = data.funding.loans.reduce((acc, l) => acc + l.amount, 0);

@@ -131,7 +131,7 @@ export const DepreciationSettingsPanel: React.FC = () => {
                     ) : (
                         <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-500 space-y-1">
                             <span className="font-bold text-slate-700 block">{isLeaseMode ? '借地リース物件の按分価格' : '新築物件の按分価格'}</span>
-                            <p>{isLeaseMode ? '借地リースでは、土地は地主から借りるため「建物本体工事費」のみが初期減価償却の対象となります。土地保証金は期末に返還される非償却資産となります。' : '新築では、土地価格（敷地仕入れ代金）と本体工事費（建物総額）が明確に分かれているため、建物割合は自動的に 100% (本体工事費全額) が償却対象となります。'}</p>
+                            <p>{isLeaseMode ? '借地リースでは、土地は地主から借りるため「建物本体工事費」のみが初期減価償却の対象となります。土地敷金は期末に返還される非償却資産となります。' : '新築では、土地価格（敷地仕入れ代金）と本体工事費（建物総額）が明確に分かれているため、建物割合は自動的に 100% (本体工事費全額) が償却対象となります。'}</p>
                         </div>
                     )}
 
@@ -176,7 +176,7 @@ export const DepreciationSettingsPanel: React.FC = () => {
                     <span className="text-slate-400 block text-[10px] mt-0.5">({usefulLifeMethod === 'custom' ? depInfo.equipmentUsefulLife : depInfo.equipmentUsefulLife}年償却)</span>
                 </div>
                 <div>
-                    <span className="text-slate-400 block mb-0.5">{isLeaseMode ? '非償却対象 保証金' : '非償却対象 土地分'}</span>
+                    <span className="text-slate-400 block mb-0.5">{isLeaseMode ? '非償却対象 敷金' : '非償却対象 土地分'}</span>
                     <span className="font-bold text-slate-800 text-sm font-mono">{formatCurrency(landTotalCostYen)}</span>
                     <span className="text-slate-400 block text-[10px] mt-0.5">(非減価償却資産)</span>
                 </div>

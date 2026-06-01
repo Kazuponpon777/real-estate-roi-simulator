@@ -61,13 +61,13 @@ export interface ProjectBudget {
     acquisitionTax: number; // 不動産取得税
     isAutoAcquisitionTax?: boolean;
     fireInsurancePrepaid: number; // 火災保険一括
-    waterContribution: number; // 水道分担金
+    waterContribution: number; // 市納金 (水道分担金等)
     brokerageFee: number; // 仲介手数料 (added commonly)
     otherInitialCost: number;
     constructionInterest: number; // 工事中金利
     
     // --- 借地リース用の追加予算項目 ---
-    landLeaseDeposit: number;     // 土地権利金・地主への保証金 万円 (借地リース用)
+    landLeaseDeposit: number;     // 土地権利金・地主への敷金 万円 (借地リース用)
 }
 
 export interface Loan {
@@ -82,7 +82,7 @@ export interface FundingPlan {
     ownCapital: number; // 自己資金 万円
     loans: Loan[];
     cooperationMoney: number; // 建設協力金 万円
-    securityDepositIn: number; // 保証金(預り) 万円
+    securityDepositIn: number; // 敷金(預り) 万円
 }
 
 export interface RoomType {
@@ -96,6 +96,9 @@ export interface RoomType {
     // --- 借地リース 建設協力金用の追加パラメータ ---
     cooperationMonths?: number;      // 建設協力金算出基準 (家賃の◯ヶ月分、例: 120ヶ月)
     cooperationReturnYears?: number; // 建設協力金のテナントへの返還期間 (年、例: 20年)
+
+    // --- 用途の分別設定 ---
+    usage?: 'residential' | 'commercial'; // 'residential': 住居系, 'commercial': 店舗用
 }
 
 export interface RentRoll {
@@ -231,7 +234,7 @@ const INITIAL_DATA: SimulationData = {
         brokerageFee: 0,
         otherInitialCost: 0,
         constructionInterest: 0,
-        landLeaseDeposit: 0, // 土地保証金デフォルト値 (万円)
+        landLeaseDeposit: 0, // 土地敷金デフォルト値 (万円)
     },
 
     funding: {
@@ -245,7 +248,7 @@ const INITIAL_DATA: SimulationData = {
 
     rentRoll: {
         roomTypes: [
-            { id: '1', name: '1K', count: 0, areaM2: 25, rent: 60000, commonFee: 5000, cooperationMonths: 120, cooperationReturnYears: 20 }
+            { id: '1', name: '1K', count: 0, areaM2: 25, rent: 60000, commonFee: 5000, cooperationMonths: 120, cooperationReturnYears: 20, usage: 'residential' }
         ],
         parkingCount: 0,
         parkingFee: 0,

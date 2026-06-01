@@ -10,6 +10,7 @@ import { TAX_RATES } from '../utils/calculations';
 export const Screen2_Budget: React.FC = () => {
     const { data, updateBudget, nextStep, prevStep } = useSimulationStore();
     const isLandMode = data.mode === 'land_new';
+    const isLeaseMode = data.mode === 'land_lease';
 
     React.useEffect(() => {
         const landPrice = (data.budget.landPrice || 0) * 10000;
@@ -20,7 +21,8 @@ export const Screen2_Budget: React.FC = () => {
         // 1. Stamp Duty
         if (data.budget.isAutoStampDuty !== false) {
             let stamp = 1;
-            const total = landPrice + (isLandMode ? buildingCost : 0);
+            // 借地リースの場合は土地を購入しないため建物建築費のみを印紙税の基準とする
+            const total = isLeaseMode ? buildingCost : (landPrice + (isLandMode ? buildingCost : 0));
             if (total > 100000000) stamp = 6;
             else if (total > 50000000) stamp = 3;
             else if (total > 10000000) stamp = 1;
@@ -36,8 +38,9 @@ export const Screen2_Budget: React.FC = () => {
 
         // 2. Registration Tax
         if (data.budget.isAutoRegistrationTax !== false) {
-            const regLand = estLandTaxValue * TAX_RATES.REGISTRATION_LICENSE.LAND_OWNERSHIP_TRANSFER;
-            const regBuilding = isLandMode
+            // 借地リースの場合は土地の登録免許税は発生しないため建物の保存登記のみ
+            const regLand = isLeaseMode ? 0 : estLandTaxValue * TAX_RATES.REGISTRATION_LICENSE.LAND_OWNERSHIP_TRANSFER;
+            const regBuilding = (isLandMode || isLeaseMode)
                 ? estBuildingTaxValue * TAX_RATES.REGISTRATION_LICENSE.BUILDING_PRESERVATION
                 : estBuildingTaxValue * TAX_RATES.REGISTRATION_LICENSE.LAND_OWNERSHIP_TRANSFER;
             const regTotalMan = Math.round((regLand + regBuilding) / 10000);
@@ -47,7 +50,8 @@ export const Screen2_Budget: React.FC = () => {
 
         // 3. Acquisition Tax
         if (data.budget.isAutoAcquisitionTax !== false) {
-            const acqLand = Math.max(0, (estLandTaxValue - (isLandMode ? 12000000 : 0)) * TAX_RATES.REAL_ESTATE_ACQUISITION.LAND);
+            // 借地リースの場合は土地の不動産取得税は発生しない
+            const acqLand = isLeaseMode ? 0 : Math.max(0, (estLandTaxValue - (isLandMode ? 12000000 : 0)) * TAX_RATES.REAL_ESTATE_ACQUISITION.LAND);
             const acqBuilding = estBuildingTaxValue * TAX_RATES.REAL_ESTATE_ACQUISITION.BUILDING;
             const acqTotalMan = Math.max(0, Math.round((acqLand + acqBuilding) / 10000));
 
@@ -64,13 +68,25 @@ export const Screen2_Budget: React.FC = () => {
         data.budget.isAutoRegistrationTax,
         data.budget.isAutoAcquisitionTax,
         isLandMode,
+        isLeaseMode,
         updateBudget
     ]);
 
     const calculateBrokerageEstimate = () => {
+        // 新築および借地リースの場合は仲介手数料は発生しないため0万円
+        if (isLandMode || isLeaseMode) {
+            updateBudget({
+                brokerageFee: 0,
+                isAutoStampDuty: true,
+                isAutoRegistrationTax: true,
+                isAutoAcquisitionTax: true,
+            });
+            return;
+        }
+
         const landPrice = (data.budget.landPrice || 0) * 10000;
         const buildingCost = (data.budget.buildingWorksCost || 0) * 10000;
-        const brokerageBase = isLandMode ? landPrice : (landPrice + buildingCost);
+        const brokerageBase = landPrice + buildingCost;
         const brokerage = brokerageBase > 4000000 ? (brokerageBase * 0.03 + 60000) * 1.1 : 0;
 
         updateBudget({
@@ -81,18 +97,21 @@ export const Screen2_Budget: React.FC = () => {
         });
     };
 
+    // 土地初期コストの選定：借地リースの場合は「土地敷金(landLeaseDeposit)」を計上、それ以外は「土地購入費(landPrice)」
+    const landCostPart = isLeaseMode ? (data.budget.landLeaseDeposit || 0) : (data.budget.landPrice || 0);
+
     const totalBudget =
-        data.budget.landPrice +
-        data.budget.demolitionCost +
-        data.budget.buildingWorksCost +
+        landCostPart +
+        ((isLandMode || isLeaseMode) ? data.budget.demolitionCost : 0) +
+        ((isLandMode || isLeaseMode) ? data.budget.buildingWorksCost : 0) +
         data.budget.stampDuty +
         data.budget.registrationTax +
         data.budget.acquisitionTax +
         data.budget.fireInsurancePrepaid +
         data.budget.waterContribution +
-        data.budget.brokerageFee +
+        (!isLandMode && !isLeaseMode ? data.budget.brokerageFee : 0) + // 新築・借地時は仲介手数料なし
         data.budget.otherInitialCost +
-        data.budget.constructionInterest;
+        ((isLandMode || isLeaseMode) ? data.budget.constructionInterest : 0);
 
     return (
         <div className="max-w-4xl mx-auto space-y-8 animate-in pb-20">
@@ -106,36 +125,47 @@ export const Screen2_Budget: React.FC = () => {
             <div className="grid gap-6">
                 <Card title="物件・建築費">
                     <div className="grid md:grid-cols-2 gap-6">
-                        <InputGroup
-                            label={isLandMode ? "土地購入費" : "物件購入費 (土地+建物)"}
-                            type="number"
-                            unit="万円"
-                            value={data.budget.landPrice || ''}
-                            onChange={(e) => updateBudget({ landPrice: parseFloat(e.target.value) })}
-                        />
+                        {isLeaseMode ? (
+                            <InputGroup
+                                label="土地敷金 (地主への敷金)"
+                                type="number"
+                                unit="万円"
+                                help="地主に預託する敷金です。契約終了時に返還される前提で計上されます。"
+                                value={data.budget.landLeaseDeposit || ''}
+                                onChange={(e) => updateBudget({ landLeaseDeposit: parseFloat(e.target.value) || 0 })}
+                            />
+                        ) : (
+                            <InputGroup
+                                label={isLandMode ? "土地購入費" : "建築費 (土地・建物含む)"}
+                                type="number"
+                                unit="万円"
+                                value={data.budget.landPrice || ''}
+                                onChange={(e) => updateBudget({ landPrice: parseFloat(e.target.value) || 0 })}
+                            />
+                        )}
 
-                        {isLandMode && (
+                        {(isLandMode || isLeaseMode) && (
                             <>
                                 <InputGroup
                                     label="解体費"
                                     type="number"
                                     unit="万円"
                                     value={data.budget.demolitionCost || ''}
-                                    onChange={(e) => updateBudget({ demolitionCost: parseFloat(e.target.value) })}
+                                    onChange={(e) => updateBudget({ demolitionCost: parseFloat(e.target.value) || 0 })}
                                 />
                                 <InputGroup
                                     label="本体工事費"
                                     type="number"
                                     unit="万円"
                                     value={data.budget.buildingWorksCost || ''}
-                                    onChange={(e) => updateBudget({ buildingWorksCost: parseFloat(e.target.value) })}
+                                    onChange={(e) => updateBudget({ buildingWorksCost: parseFloat(e.target.value) || 0 })}
                                 />
                                 <InputGroup
                                     label="工事中金利"
                                     type="number"
                                     unit="万円"
                                     value={data.budget.constructionInterest || ''}
-                                    onChange={(e) => updateBudget({ constructionInterest: parseFloat(e.target.value) })}
+                                    onChange={(e) => updateBudget({ constructionInterest: parseFloat(e.target.value) || 0 })}
                                 />
                             </>
                         )}
@@ -144,13 +174,16 @@ export const Screen2_Budget: React.FC = () => {
 
                 <Card title="諸経費 (初期費用)">
                     <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <InputGroup
-                            label="仲介手数料"
-                            type="number"
-                            unit="万円"
-                            value={data.budget.brokerageFee || ''}
-                            onChange={(e) => updateBudget({ brokerageFee: parseFloat(e.target.value) })}
-                        />
+                        {/* 仲介手数料は中古物件投資モード（!isLandMode && !isLeaseMode）のときのみ表示 */}
+                        {!isLandMode && !isLeaseMode && (
+                            <InputGroup
+                                label="仲介手数料"
+                                type="number"
+                                unit="万円"
+                                value={data.budget.brokerageFee || ''}
+                                onChange={(e) => updateBudget({ brokerageFee: parseFloat(e.target.value) || 0 })}
+                            />
+                        )}
                         <InputGroup
                             label="印紙税"
                             type="number"
@@ -185,25 +218,27 @@ export const Screen2_Budget: React.FC = () => {
                             help="購入金額の70/50%を評価額として概算。手動変更で固定されます。"
                         />
                         <InputGroup
-                            label="火災保険料 (一括)"
+                            label="火災保険料 (5年一括)"
                             type="number"
                             unit="万円"
+                            help="5年契約分の一括火災保険料です。5年ごとにスポット更新費用として再計上されます。"
                             value={data.budget.fireInsurancePrepaid || ''}
-                            onChange={(e) => updateBudget({ fireInsurancePrepaid: parseFloat(e.target.value) })}
+                            onChange={(e) => updateBudget({ fireInsurancePrepaid: parseFloat(e.target.value) || 0 })}
                         />
                         <InputGroup
-                            label="水道分担金等"
+                            label="市納金 (水道分担金等)"
                             type="number"
                             unit="万円"
+                            help="地方自治体等へ支払う水道負担金などの市納金です。"
                             value={data.budget.waterContribution || ''}
-                            onChange={(e) => updateBudget({ waterContribution: parseFloat(e.target.value) })}
+                            onChange={(e) => updateBudget({ waterContribution: parseFloat(e.target.value) || 0 })}
                         />
                         <InputGroup
                             label="その他諸経費"
                             type="number"
                             unit="万円"
                             value={data.budget.otherInitialCost || ''}
-                            onChange={(e) => updateBudget({ otherInitialCost: parseFloat(e.target.value) })}
+                            onChange={(e) => updateBudget({ otherInitialCost: parseFloat(e.target.value) || 0 })}
                         />
                     </div>
                 </Card>

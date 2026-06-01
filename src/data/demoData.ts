@@ -38,7 +38,7 @@ export const DEMO_DATA: SimulationData = {
         brokerageFee: 280, // (8500 * 3% + 6) * 1.1 roughly
         otherInitialCost: 100,
         constructionInterest: 50,
-        landLeaseDeposit: 0, // 借地リース用土地保証金・一時金デフォルト値
+        landLeaseDeposit: 0, // 借地リース用土地敷金デフォルト値
     },
     funding: {
         ownCapital: 1000,

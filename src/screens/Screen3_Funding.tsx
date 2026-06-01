@@ -10,18 +10,22 @@ import { formatManYen } from '../utils/formatters';
 export const Screen3_Funding: React.FC = () => {
     const { data, updateFunding, nextStep, prevStep } = useSimulationStore();
 
+    const isLandMode = data.mode === 'land_new';
+    const isLeaseMode = data.mode === 'land_lease';
+    const landCostPart = isLeaseMode ? (data.budget.landLeaseDeposit || 0) : (data.budget.landPrice || 0);
+
     const totalBudget =
-        data.budget.landPrice +
-        data.budget.demolitionCost +
-        data.budget.buildingWorksCost +
+        landCostPart +
+        ((isLandMode || isLeaseMode) ? data.budget.demolitionCost : 0) +
+        ((isLandMode || isLeaseMode) ? data.budget.buildingWorksCost : 0) +
         data.budget.stampDuty +
         data.budget.registrationTax +
         data.budget.acquisitionTax +
         data.budget.fireInsurancePrepaid +
         data.budget.waterContribution +
-        data.budget.brokerageFee +
+        (!isLandMode && !isLeaseMode ? data.budget.brokerageFee : 0) + // 新築・借地時は仲介手数料なし
         data.budget.otherInitialCost +
-        data.budget.constructionInterest;
+        ((isLandMode || isLeaseMode) ? data.budget.constructionInterest : 0);
 
     const totalLoans = data.funding.loans.reduce((acc, loan) => acc + loan.amount, 0);
     const totalFunding = totalLoans + data.funding.ownCapital + data.funding.cooperationMoney + data.funding.securityDepositIn;
@@ -78,7 +82,7 @@ export const Screen3_Funding: React.FC = () => {
                    But maybe owner puts in advanced tenant deposits? 
                    Or this is effectively "Loan from Tenant". */}
                         <InputGroup
-                            label="保証金 (預り金)"
+                            label="敷金 (預り金)"
                             type="number"
                             unit="万円"
                             value={data.funding.securityDepositIn || ''}

@@ -15,14 +15,52 @@ export const IncomeExpensePage: React.FC<IncomeExpensePageProps> = ({ data, expe
     const totalMonthlyParking = data.rentRoll.parkingCount * data.rentRoll.parkingFee;
     const monthlyGrossRevenue = totalMonthlyRent + totalMonthlyParking + (data.rentRoll.solarPowerIncome || 0) + data.rentRoll.otherRevenue;
 
-    const landCost = data.budget.landPrice * 10000;
-    const buildingCost = (data.budget.demolitionCost + data.budget.buildingWorksCost) * 10000;
-    const brokerageCost = data.budget.brokerageFee * 10000;
-    const otherInitialCost = (data.budget.stampDuty + data.budget.registrationTax + data.budget.acquisitionTax + data.budget.fireInsurancePrepaid + data.budget.waterContribution + data.budget.otherInitialCost + data.budget.constructionInterest) * 10000;
+    const isLandMode = data.mode === 'land_new';
+    const isLeaseMode = data.mode === 'land_lease';
+    const isUsed = data.mode === 'investment_used';
+
+    // 1. 土地価格・土地敷金の算出
+    // 借地リースの場合は土地を購入しないため「土地敷金 (地主)」を計上、中古の場合は建物割合を引いた土地按分価格を算出
+    let landCost = 0;
+    let landLabel = '土地';
+    if (isLeaseMode) {
+        landCost = (data.budget.landLeaseDeposit || 0) * 10000;
+        landLabel = '土地敷金 (地主)';
+    } else if (isUsed) {
+        const buildingRatio = data.advancedSettings?.buildingRatio ?? 50;
+        landCost = (data.budget.landPrice * (100 - buildingRatio) / 100) * 10000;
+    } else {
+        landCost = (data.budget.landPrice || 0) * 10000;
+    }
+
+    // 2. 建物価格の算出
+    // 中古の場合は建物割合を考慮して建物価格を算出、新築・借地は解体費＋本体工事費
+    let buildingCost = 0;
+    if (isUsed) {
+        const buildingRatio = data.advancedSettings?.buildingRatio ?? 50;
+        buildingCost = (data.budget.landPrice * buildingRatio / 100) * 10000;
+    } else {
+        buildingCost = (((isLandMode || isLeaseMode) ? data.budget.demolitionCost : 0) + ((isLandMode || isLeaseMode) ? data.budget.buildingWorksCost : 0)) * 10000;
+    }
+
+    // 3. 仲介手数料 (新築・借地時は0円)
+    const brokerageCost = (!isLandMode && !isLeaseMode ? data.budget.brokerageFee : 0) * 10000;
+
+    // 4. その他諸経費
+    const otherInitialCost = (
+        data.budget.stampDuty +
+        data.budget.registrationTax +
+        data.budget.acquisitionTax +
+        data.budget.fireInsurancePrepaid +
+        data.budget.waterContribution +
+        data.budget.otherInitialCost +
+        ((isLandMode || isLeaseMode) ? data.budget.constructionInterest : 0)
+    ) * 10000;
+
     const totalCost = landCost + buildingCost + brokerageCost + otherInitialCost;
 
     const budgetData = [
-        { name: '土地', value: landCost },
+        { name: landLabel, value: landCost },
         { name: '建物', value: buildingCost },
         { name: '仲介手数料', value: brokerageCost },
         { name: 'その他諸経費', value: otherInitialCost },

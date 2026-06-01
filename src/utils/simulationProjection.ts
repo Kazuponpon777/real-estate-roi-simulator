@@ -108,6 +108,10 @@ export const calculateLongTermProjection = (data: SimulationData, years: number 
     const cityPlanningTaxLand = isLeaseMode ? 0 : data.expenses.cityPlanningTaxLand;
     const landLeaseFeeAnnual = isLeaseMode ? (data.advancedSettings?.landLeaseFee ?? 0) * 12 : 0; // 地主へ支払う年間地代
 
+    const isNewOrLease = data.mode === 'land_new' || data.mode === 'land_lease';
+    // 新築・借地リースの場合は毎年の火災保険料は発生せず、5年周期のスポット一括払いとなるため毎年の経費から除外
+    const fireInsuranceAnnual = isNewOrLease ? 0 : data.expenses.fireInsuranceAnnual;
+
     const fixedOpexPart =
         (data.expenses.buildingMaintenance * 12) +
         (data.expenses.maintenanceReserve * 12) +
@@ -115,7 +119,7 @@ export const calculateLongTermProjection = (data: SimulationData, years: number 
         cityPlanningTaxLand +
         data.expenses.fixedAssetTaxBuilding +
         data.expenses.cityPlanningTaxBuilding +
-        data.expenses.fireInsuranceAnnual +
+        fireInsuranceAnnual +
         data.expenses.otherExpenses +
         landLeaseFeeAnnual; // 年間地代を運営費に加算
 
@@ -144,7 +148,15 @@ export const calculateLongTermProjection = (data: SimulationData, years: number 
         } else {
             managementFee = data.expenses.managementFeeFixed * 12;
         }
-        const opex = fixedOpexPart + managementFee;
+
+        // 火災保険料（5年一括）の5年周期スポット更新計算 (1年目は初期費用、次は6, 11, 16, 21, 26, 31年目に再発生)
+        let spotFireInsuranceYen = 0;
+        const isNewOrLease = data.mode === 'land_new' || data.mode === 'land_lease';
+        if (isNewOrLease && y > 1 && y % 5 === 1) {
+            spotFireInsuranceYen = (data.budget.fireInsurancePrepaid || 0) * 10000;
+        }
+
+        const opex = fixedOpexPart + managementFee + spotFireInsuranceYen;
         const noi = effectiveIncome - opex;
 
         // === 3. Debt Service (with interest rate rise) ===
@@ -326,7 +338,7 @@ export const getInvestmentMetrics = (
             : data.budget.buildingWorksCost * 10000;
             
         // 土地代の処理: 借地リースの場合は土地を購入しないため「土地売却額」はありませんが、
-        // 預けていた土地一時金/保証金(landLeaseDeposit)が期末に戻るため、それを土地の回収価値(landCost)として代入します
+        // 預けていた土地敷金(landLeaseDeposit)が期末に戻るため、それを土地の回収価値(landCost)として代入します
         const landCost = isLeaseMode
             ? (data.budget.landLeaseDeposit ?? 0) * 10000
             : (isUsed

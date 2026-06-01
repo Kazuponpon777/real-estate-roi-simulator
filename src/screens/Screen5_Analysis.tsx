@@ -67,25 +67,25 @@ export const Screen5_Analysis: React.FC = () => {
     // 1. 総事業費（自己資金 ＋ 借入額 ＋ その他初期諸経費）の算出
     // 【バグ修正】新築時のみ本体工事費や解体費用・中金利を合算し、中古時は購入価格と諸経費のみにする（データ混在防止）
     // 1. 総事業費（自己資金 ＋ 借入額 ＋ その他初期諸経費）の算出
-    // 【バグ修正】新築・借地・中古のモードごとに、工事費や保証金を正確に合算して土地価格を処理
+    // 【バグ修正】新築・借地・中古のモードごとに、工事費や敷金を正確に合算して土地価格を処理
     const isLandMode = data.mode === 'land_new';
     const isLeaseMode = data.mode === 'land_lease';
 
-    // 借地リースの場合は土地を購入しないため、地主への保証金/権利金を初期投資総額のベースとする
+    // 借地リースの場合は土地を購入しないため、地主への敷金/権利金を初期投資総額のベースとする
     const landInitialCost = isLeaseMode ? (data.budget.landLeaseDeposit ?? 0) : data.budget.landPrice;
 
     const totalBudget =
         landInitialCost +
-        (isLandMode ? data.budget.demolitionCost : 0) +
-        (isLandMode || isLeaseMode ? data.budget.buildingWorksCost : 0) + // 借地リースも新築なので本体工事費を含む
+        ((isLandMode || isLeaseMode) ? data.budget.demolitionCost : 0) +
+        ((isLandMode || isLeaseMode) ? data.budget.buildingWorksCost : 0) +
         data.budget.stampDuty +
         data.budget.registrationTax +
         data.budget.acquisitionTax +
         data.budget.fireInsurancePrepaid +
         data.budget.waterContribution +
-        data.budget.brokerageFee +
+        (!isLandMode && !isLeaseMode ? data.budget.brokerageFee : 0) + // 新築・借地時は仲介手数料なし
         data.budget.otherInitialCost +
-        (isLandMode ? data.budget.constructionInterest : 0);
+        ((isLandMode || isLeaseMode) ? data.budget.constructionInterest : 0);
 
     const totalBudgetYen = totalBudget * 10000;
 

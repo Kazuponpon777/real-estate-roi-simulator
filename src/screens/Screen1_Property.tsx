@@ -75,7 +75,7 @@ export const Screen1_Property: React.FC = () => {
                                 className="md:col-span-2"
                             />
 
-                            {/* 【借地リース特別UI】地主への月額地代および土地一時金/保証金を入力するフォーム */}
+                            {/* 【借地リース特別UI】地主への月額地代および土地敷金を入力するフォーム */}
                             {data.mode === 'land_lease' && (
                                 <div className="md:col-span-2 grid md:grid-cols-2 gap-6 p-4 bg-indigo-50/30 rounded-xl border border-indigo-100/50">
                                     <InputGroup
@@ -90,10 +90,10 @@ export const Screen1_Property: React.FC = () => {
                                         }}
                                     />
                                     <InputGroup
-                                        label="土地一時金・保証金"
+                                        label="土地敷金 (地主への敷金)"
                                         type="number"
                                         unit="万円"
-                                        help="契約時に地主へ支払う権利金や預託する保証金です。保証金は運用最終年に返還回収される前提でIRR計算等に反映されます。"
+                                        help="契約時に地主に預託する敷金です。敷金は運用最終年に返還回収される前提でIRR計算等に反映されます。"
                                         value={data.budget.landLeaseDeposit || ''}
                                         onChange={(e) => {
                                             const val = parseFloat(e.target.value);
