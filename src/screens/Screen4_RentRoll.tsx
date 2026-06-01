@@ -67,34 +67,38 @@ export const Screen4_RentRoll: React.FC = () => {
             );
         }
 
+        // 用途に応じた自動予測（オートコンプリート）用の選択リストID
+        const listId = `room-suggestions-${titleLabel === '住居系' ? 'res' : 'comm'}`;
+
         return (
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                    <thead className="bg-slate-50 text-slate-500 uppercase font-bold text-xs">
+            <div className="overflow-x-auto rounded-xl border border-slate-100 shadow-sm bg-white">
+                {/* 借地リース時は列数が多いため最小幅を1150pxに広げ、入力欄が絶対に潰れないようにバランスを調整 */}
+                <table className="w-full text-sm text-left border-collapse" style={{ minWidth: data.mode === 'land_lease' ? '1150px' : '850px' }}>
+                    <thead className="bg-slate-50 text-slate-500 uppercase font-bold text-xs border-b border-slate-100">
                         <tr>
-                            <th className="px-4 py-3 rounded-l-lg">用途</th>
-                            <th className="px-4 py-3">間取り・名称</th>
-                            <th className="px-4 py-3">戸数</th>
-                            <th className="px-4 py-3">面積(㎡)</th>
-                            <th className="px-4 py-3">賃料(円)</th>
-                            <th className="px-4 py-3">共益費(円)</th>
+                            <th className="px-4 py-3.5 w-28 rounded-l-lg">用途</th>
+                            <th className="px-4 py-3.5 w-48">間取り・名称</th>
+                            <th className="px-4 py-3.5 w-20 text-center">戸数</th>
+                            <th className="px-4 py-3.5 w-24 text-center">面積(㎡)</th>
+                            <th className="px-4 py-3.5 w-28 text-center">賃料(円)</th>
+                            <th className="px-4 py-3.5 w-24 text-center">共益費(円)</th>
                             {data.mode === 'land_lease' && (
                                 <>
-                                    <th className="px-4 py-3 text-right">協力金(ヶ月)</th>
-                                    <th className="px-4 py-3 text-right">返還期間(年)</th>
-                                    <th className="px-4 py-3 text-right">協力金総額(円)</th>
+                                    <th className="px-4 py-3.5 w-24 text-right">協力金(ヶ月)</th>
+                                    <th className="px-4 py-3.5 w-24 text-right">返還期間(年)</th>
+                                    <th className="px-4 py-3.5 w-32 text-right">協力金総額(円)</th>
                                 </>
                             )}
-                            <th className="px-4 py-3">小計(円)</th>
-                            <th className="px-4 py-3 rounded-r-lg w-10"></th>
+                            <th className="px-4 py-3.5 w-28 text-right">小計(円)</th>
+                            <th className="px-4 py-3.5 rounded-r-lg w-10 text-center"></th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {rooms.map((room) => (
-                            <tr key={room.id} className="group hover:bg-slate-50">
-                                <td className="px-4 py-2">
+                            <tr key={room.id} className="group hover:bg-slate-50/50 transition-colors">
+                                <td className="px-4 py-2.5">
                                     <select
-                                        className="rounded border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-600 focus:border-indigo-500 focus:outline-none"
+                                        className="w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 transition-all"
                                         value={room.usage || 'residential'}
                                         onChange={(e) => updateRoomType(room.id, { usage: e.target.value as any })}
                                     >
@@ -102,74 +106,98 @@ export const Screen4_RentRoll: React.FC = () => {
                                         <option value="commercial">🏬 店舗</option>
                                     </select>
                                 </td>
-                                <td className="px-4 py-2">
+                                <td className="px-4 py-2.5">
                                     <input
-                                        className="w-full bg-transparent border-b border-transparent focus:border-blue-500 focus:outline-none"
+                                        className="w-full bg-transparent border-b border-slate-200 hover:border-slate-300 focus:border-indigo-500 focus:outline-none px-1 py-1 text-slate-700 placeholder-slate-300 transition-colors"
                                         placeholder={room.usage === 'commercial' ? "例: 店舗A" : "例: 1K"}
                                         value={room.name}
+                                        list={listId}
                                         onChange={(e) => updateRoomType(room.id, { name: e.target.value })}
                                     />
+                                    {/* プルダウン候補と手入力を両立するデータリスト */}
+                                    <datalist id={listId}>
+                                        {room.usage === 'commercial' ? (
+                                            <>
+                                                <option value="テナント店舗" />
+                                                <option value="事務所・オフィス" />
+                                                <option value="コンビニ" />
+                                                <option value="クリニック" />
+                                                <option value="飲食店" />
+                                                <option value="ショールーム" />
+                                            </>
+                                        ) : (
+                                            <>
+                                                <option value="1K" />
+                                                <option value="1DK" />
+                                                <option value="1LDK" />
+                                                <option value="2DK" />
+                                                <option value="2LDK" />
+                                                <option value="3LDK" />
+                                                <option value="ファミリータイプ" />
+                                            </>
+                                        )}
+                                    </datalist>
                                 </td>
-                                <td className="px-4 py-2">
+                                <td className="px-4 py-2.5 text-center">
                                     <input
                                         type="number"
-                                        className="w-20 bg-transparent border rounded px-2 py-1 text-right focus:border-blue-500 focus:outline-none"
+                                        className="w-16 bg-white border border-slate-200 rounded-md px-2 py-1 text-right focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 text-slate-700 transition-all"
                                         value={room.count}
                                         onChange={(e) => updateRoomType(room.id, { count: parseFloat(e.target.value) || 0 })}
                                     />
                                 </td>
-                                <td className="px-4 py-2">
+                                <td className="px-4 py-2.5 text-center">
                                     <input
                                         type="number"
-                                        className="w-20 bg-transparent border rounded px-2 py-1 text-right focus:border-blue-500 focus:outline-none"
+                                        className="w-16 bg-white border border-slate-200 rounded-md px-2 py-1 text-right focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 text-slate-700 transition-all"
                                         value={room.areaM2}
                                         onChange={(e) => updateRoomType(room.id, { areaM2: parseFloat(e.target.value) || 0 })}
                                     />
                                 </td>
-                                <td className="px-4 py-2">
+                                <td className="px-4 py-2.5 text-center">
                                     <input
                                         type="number"
-                                        className="w-28 bg-transparent border rounded px-2 py-1 text-right focus:border-blue-500 focus:outline-none"
+                                        className="w-24 bg-white border border-slate-200 rounded-md px-2 py-1 text-right focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 text-slate-700 font-mono transition-all"
                                         value={room.rent}
                                         onChange={(e) => updateRoomType(room.id, { rent: parseFloat(e.target.value) || 0 })}
                                     />
                                 </td>
-                                <td className="px-4 py-2">
+                                <td className="px-4 py-2.5 text-center">
                                     <input
                                         type="number"
-                                        className="w-24 bg-transparent border rounded px-2 py-1 text-right focus:border-blue-500 focus:outline-none"
+                                        className="w-20 bg-white border border-slate-200 rounded-md px-2 py-1 text-right focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 text-slate-700 font-mono transition-all"
                                         value={room.commonFee}
                                         onChange={(e) => updateRoomType(room.id, { commonFee: parseFloat(e.target.value) || 0 })}
                                     />
                                 </td>
                                 {data.mode === 'land_lease' && (
                                     <>
-                                        <td className="px-4 py-2">
+                                        <td className="px-4 py-2.5 text-center">
                                             <input
                                                 type="number"
-                                                className="w-20 bg-transparent border rounded px-2 py-1 text-right focus:border-blue-500 focus:outline-none"
+                                                className="w-16 bg-white border border-slate-200 rounded-md px-2 py-1 text-right focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 text-slate-700 transition-all"
                                                 value={room.cooperationMonths ?? 0}
                                                 onChange={(e) => updateRoomType(room.id, { cooperationMonths: parseFloat(e.target.value) || 0 })}
                                             />
                                         </td>
-                                        <td className="px-4 py-2">
+                                        <td className="px-4 py-2.5 text-center">
                                             <input
                                                 type="number"
-                                                className="w-20 bg-transparent border rounded px-2 py-1 text-right focus:border-blue-500 focus:outline-none"
+                                                className="w-16 bg-white border border-slate-200 rounded-md px-2 py-1 text-right focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 text-slate-700 transition-all"
                                                 value={room.cooperationReturnYears ?? 0}
                                                 onChange={(e) => updateRoomType(room.id, { cooperationReturnYears: parseFloat(e.target.value) || 0 })}
                                             />
                                         </td>
-                                        <td className="px-4 py-2 text-right text-slate-600 font-mono">
+                                        <td className="px-4 py-2.5 text-right text-slate-600 font-mono font-medium text-xs">
                                             {((room.rent * room.count * (room.cooperationMonths ?? 0))).toLocaleString()}
                                         </td>
                                     </>
                                 )}
-                                <td className="px-4 py-2 font-medium text-right text-slate-700 font-mono">
+                                <td className="px-4 py-2.5 font-bold text-right text-slate-700 font-mono text-xs">
                                     {((room.rent + room.commonFee) * room.count).toLocaleString()}
                                 </td>
-                                <td className="px-4 py-2 text-right">
-                                    <button onClick={() => removeRoomType(room.id)} className="text-slate-300 hover:text-red-500 transition-colors">
+                                <td className="px-4 py-2.5 text-center">
+                                    <button onClick={() => removeRoomType(room.id)} className="text-slate-300 hover:text-red-500 transition-colors p-1 rounded-md hover:bg-red-50">
                                         <Trash2 className="h-4 w-4" />
                                     </button>
                                 </td>
