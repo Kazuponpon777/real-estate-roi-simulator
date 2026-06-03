@@ -7,6 +7,7 @@ export const TAX_RATES = {
     REGISTRATION_LICENSE: {
         LAND_OWNERSHIP_TRANSFER: 0.015, // 土地所有権移転登記 (軽減税率)
         BUILDING_PRESERVATION: 0.004,   // 建物保存登記
+        BUILDING_TRANSFER: 0.02,        // 中古建物移転登記 (2.0%)
         MORTGAGE_SETTING: 0.004,        // 抵当権設定登記
     },
     REAL_ESTATE_ACQUISITION: {
@@ -98,19 +99,35 @@ export const calculateAutoStampDuty = (budget: any, mode: string): number => {
 /**
  * 自動登録免許税計算 (Zustandストア内移行用)
  */
-export const calculateAutoRegistrationTax = (budget: any, mode: string): number => {
+export const calculateAutoRegistrationTax = (budget: any, mode: string, buildingRatioPercent: number = 50): number => {
     const isLeaseMode = mode === 'land_lease';
     const isLandMode = mode === 'land_new';
-    const landPrice = (budget.landPrice || 0) * 10000;
-    const buildingCost = (budget.buildingWorksCost || 0) * 10000;
+    const isUsedMode = mode === 'investment_used';
+    
+    let landPrice = (budget.landPrice || 0) * 10000;
+    let buildingCost = (budget.buildingWorksCost || 0) * 10000;
+    
+    // 中古物件の場合は、物件総額（landPrice）を建物比率で按分する
+    if (isUsedMode) {
+        const total = landPrice;
+        buildingCost = total * (buildingRatioPercent / 100);
+        landPrice = total * (1 - buildingRatioPercent / 100);
+    }
     
     const estLandTaxValue = landPrice * 0.7;
     const estBuildingTaxValue = buildingCost * 0.5;
     
     const regLand = isLeaseMode ? 0 : estLandTaxValue * TAX_RATES.REGISTRATION_LICENSE.LAND_OWNERSHIP_TRANSFER;
-    const regBuilding = (isLandMode || isLeaseMode)
-        ? estBuildingTaxValue * TAX_RATES.REGISTRATION_LICENSE.BUILDING_PRESERVATION
-        : estBuildingTaxValue * TAX_RATES.REGISTRATION_LICENSE.LAND_OWNERSHIP_TRANSFER;
+    
+    let regBuilding = 0;
+    if (isLandMode || isLeaseMode) {
+        regBuilding = estBuildingTaxValue * TAX_RATES.REGISTRATION_LICENSE.BUILDING_PRESERVATION;
+    } else if (isUsedMode) {
+        // 中古建物の場合は移転登記 (2.0%)
+        regBuilding = estBuildingTaxValue * TAX_RATES.REGISTRATION_LICENSE.BUILDING_TRANSFER;
+    } else {
+        regBuilding = estBuildingTaxValue * TAX_RATES.REGISTRATION_LICENSE.LAND_OWNERSHIP_TRANSFER;
+    }
     
     return Math.round((regLand + regBuilding) / 10000);
 };
@@ -118,11 +135,20 @@ export const calculateAutoRegistrationTax = (budget: any, mode: string): number 
 /**
  * 自動不動産取得税計算 (Zustandストア内移行用)
  */
-export const calculateAutoAcquisitionTax = (budget: any, mode: string): number => {
+export const calculateAutoAcquisitionTax = (budget: any, mode: string, buildingRatioPercent: number = 50): number => {
     const isLeaseMode = mode === 'land_lease';
     const isLandMode = mode === 'land_new';
-    const landPrice = (budget.landPrice || 0) * 10000;
-    const buildingCost = (budget.buildingWorksCost || 0) * 10000;
+    const isUsedMode = mode === 'investment_used';
+    
+    let landPrice = (budget.landPrice || 0) * 10000;
+    let buildingCost = (budget.buildingWorksCost || 0) * 10000;
+    
+    // 中古物件の場合は、物件総額（landPrice）を建物比率で按分する
+    if (isUsedMode) {
+        const total = landPrice;
+        buildingCost = total * (buildingRatioPercent / 100);
+        landPrice = total * (1 - buildingRatioPercent / 100);
+    }
     
     const estLandTaxValue = landPrice * 0.7;
     const estBuildingTaxValue = buildingCost * 0.5;

@@ -1,10 +1,8 @@
-import { useRef, type ChangeEvent } from 'react';
-import { Building2, Search, ArrowRight, Upload, FileJson, PlayCircle, Store, CheckCircle2 } from 'lucide-react';
+import { Building2, Search, ArrowRight, PlayCircle, Store, CheckCircle2 } from 'lucide-react';
 import { useSimulationStore } from '../stores/useSimulationStore';
 import type { SimulationMode } from '../stores/useSimulationStore';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { loadProjectJSON, importCSV } from '../utils/fileHandler';
 import { DEMO_DATA } from '../data/demoData';
 
 interface ModeOption {
@@ -23,8 +21,8 @@ const MODE_OPTIONS: ModeOption[] = [
         mode: 'land_new',
         title: '土地活用 (新築)',
         tag: '資産形成の王道',
-        tagClass: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-        gradientClass: 'from-indigo-500/10 to-blue-500/10 border-indigo-100 hover:border-indigo-300',
+        tagClass: 'bg-[#fcf5e3] text-[#8c6114] border-[#ebd9c5]',
+        gradientClass: 'from-[#d4af37]/10 to-[#aa7c11]/10 border-[#ebd9c5] hover:border-[#a87c28]',
         description: '更地からの新築建築企画、土地持ちオーナー様の長期的な事業収支シミュレーションに。',
         features: [
             '長期にわたる安定的な家賃収入',
@@ -37,12 +35,12 @@ const MODE_OPTIONS: ModeOption[] = [
         mode: 'investment_used',
         title: '収益物件購入 (中古)',
         tag: 'スピード節税・高利回り',
-        tagClass: 'bg-amber-100 text-amber-800 border-amber-200',
-        gradientClass: 'from-amber-500/10 to-orange-500/10 border-amber-100 hover:border-amber-300',
+        tagClass: 'bg-[#f5ebd9] text-[#8a5d3b] border-[#ebd9c5]',
+        gradientClass: 'from-[#8a5d3b]/10 to-[#ebd9c5]/20 border-[#ebd9c5] hover:border-[#8a5d3b]/50',
         description: '既存の土地付き収益ビル・マンションの購入・運用収支シミュレーションに。',
         features: [
             '築古・木造等の簡便法による「短期減価償却」',
-            '高い初期利回りと即座のキャッシュフロー',
+            '高い初期利回りと即座의キャッシュフロー',
             '建物比率の調整による税務メリットの極大化'
         ],
         icon: Search
@@ -51,8 +49,8 @@ const MODE_OPTIONS: ModeOption[] = [
         mode: 'land_lease',
         title: '借地リース (テナント開発)',
         tag: '他人資本で勝つ超高効率',
-        tagClass: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-        gradientClass: 'from-emerald-500/10 to-teal-500/10 border-emerald-100 hover:border-emerald-300',
+        tagClass: 'bg-[#ebd9c5]/40 text-[#23150d] border-[#ebd9c5]',
+        gradientClass: 'from-[#3d251a]/5 to-[#8c6114]/10 border-[#ebd9c5] hover:border-[#3d251a]/30',
         description: '地権者から借地し、上物を自社建設してテナントへリース・サブリースする事業スキームに。',
         features: [
             '土地購入費が完全ゼロ（初期投資の圧倒的圧縮）',
@@ -76,38 +74,38 @@ const ModeCard = ({
     return (
         <button
             onClick={onClick}
-            className={`w-full group relative overflow-hidden text-left transition-all duration-300 rounded-2xl hover:scale-[1.03] active:scale-[1.01] ${active ? 'ring-2 ring-indigo-500 shadow-xl scale-[1.03]' : 'hover:shadow-lg'
+            className={`w-full group relative overflow-hidden text-left transition-all duration-300 rounded-2xl hover:scale-[1.03] active:scale-[1.01] ${active ? 'ring-2 ring-[#a87c28] shadow-xl scale-[1.03]' : 'hover:shadow-lg'
                 }`}
         >
             {/* 背景のグラデーション演出 */}
             <div className={`absolute inset-0 bg-gradient-to-br ${option.gradientClass} opacity-60 transition-opacity duration-300`} />
             
-            <Card className={`relative h-full border-2 bg-white/70 backdrop-blur-md transition-colors duration-300 ${active ? 'border-indigo-500 bg-indigo-50/20' : 'border-slate-100'}`}>
+            <Card className={`relative h-full border-2 bg-[#fcf9f2]/90 backdrop-blur-md transition-colors duration-300 ${active ? 'border-[#a87c28] bg-[#ebd9c5]/10' : 'border-[#e8dcc4]/60'}`}>
                 {/* タグ表示 */}
                 <div className="flex justify-between items-start mb-6">
                     <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold transition-colors ${option.tagClass}`}>
                         {option.tag}
                     </span>
-                    <div className={`flex h-12 w-12 items-center justify-center rounded-xl transition-all duration-300 ${active ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 group-hover:bg-indigo-600 group-hover:text-white'
+                    <div className={`flex h-12 w-12 items-center justify-center rounded-xl transition-all duration-300 ${active ? 'bg-gradient-to-tr from-[#aa7c11] to-[#d4af37] text-[#1c120c] shadow-sm' : 'bg-[#fcf9f2] text-[#8c6114] border border-[#e8dcc4] group-hover:bg-gradient-to-tr group-hover:from-[#aa7c11] group-hover:to-[#d4af37] group-hover:text-[#1c120c]'
                         }`}>
                         <Icon className="h-6 w-6" />
                     </div>
                 </div>
 
-                <h3 className={`mb-3 text-xl font-bold ${active ? 'text-indigo-900' : 'text-slate-900'}`}>{option.title}</h3>
-                <p className="text-sm text-slate-500 leading-relaxed mb-6 h-12 overflow-hidden">{option.description}</p>
+                <h3 className={`mb-3 text-xl font-bold ${active ? 'text-[#23150d]' : 'text-[#23150d]/90'}`}>{option.title}</h3>
+                <p className="text-sm text-[#8c6c59] leading-relaxed mb-6 h-12 overflow-hidden">{option.description}</p>
 
                 {/* 特徴リスト（箇条書き）の追加 */}
-                <div className="space-y-2.5 mb-8 border-t border-slate-100/50 pt-4">
+                <div className="space-y-2.5 mb-8 border-t border-[#ebd9c5] pt-4">
                     {option.features.map((feature, idx) => (
-                        <div key={idx} className="flex items-start gap-2 text-xs text-slate-600">
-                            <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                        <div key={idx} className="flex items-start gap-2 text-xs text-[#3d251a]">
+                            <CheckCircle2 className="h-4 w-4 text-[#ebd9c5] shrink-0 mt-0.5" />
                             <span>{feature}</span>
                         </div>
                     ))}
                 </div>
 
-                <div className={`flex items-center text-xs font-bold uppercase tracking-wider ${active ? 'text-indigo-600' : 'text-slate-400 group-hover:text-indigo-600'
+                <div className={`flex items-center text-xs font-bold uppercase tracking-wider ${active ? 'text-[#a87c28]' : 'text-[#8c6114] group-hover:text-[#a87c28]'
                     }`}>
                     このモードでシミュレーションを開始 <ArrowRight className="ml-1.5 h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
                 </div>
@@ -118,42 +116,10 @@ const ModeCard = ({
 
 export const Screen0_ModeSelect: React.FC = () => {
     const { data, updateData, nextStep, setStep } = useSimulationStore();
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const csvInputRef = useRef<HTMLInputElement>(null);
 
     const handleSelect = (mode: SimulationMode) => {
         updateData({ mode });
         nextStep();
-    };
-
-    const handleLoadJSON = async (e: ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        try {
-            const loadedData = await loadProjectJSON(file);
-            updateData(loadedData);
-            setStep(5); // Jump to analysis
-            alert('プロジェクトを読み込みました');
-        } catch (err) {
-            console.error(err);
-            alert('ファイルの読み込みに失敗しました');
-        }
-        if (fileInputRef.current) fileInputRef.current.value = '';
-    };
-
-    const handleImportCSV = async (e: ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        try {
-            const newData = await importCSV(file, data);
-            updateData(newData);
-            setStep(1); // Jump to Property
-            alert('CSVデータをインポートしました');
-        } catch (err) {
-            console.error(err);
-            alert('CSVの読み込みに失敗しました');
-        }
-        if (csvInputRef.current) csvInputRef.current.value = '';
     };
 
     const handleLoadDemo = () => {
@@ -166,25 +132,16 @@ export const Screen0_ModeSelect: React.FC = () => {
     return (
         <div className="flex h-full flex-col justify-center px-4 max-w-6xl mx-auto w-full animate-in pb-16">
             <div className="flex flex-col items-center justify-center mb-12 text-center">
-                <h1 className="text-4xl font-extrabold text-slate-900 mb-4 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-indigo-400">
+                <h1 className="text-4xl font-extrabold font-serif text-transparent bg-clip-text bg-gradient-to-r from-[#8c6114] via-[#a87c28] to-[#aa7c11] mb-4 tracking-wide">
                     不動産収支シミュレーター
                 </h1>
-                <p className="text-lg text-slate-500 mb-8 max-w-md">
+                <p className="text-lg text-[#8c6c59] mb-8 max-w-md font-medium">
                     想定する事業スキームに合わせた最適な入力フォームとAI分析レポートを自動生成します
                 </p>
 
                 <div className="flex flex-wrap justify-center gap-4">
-                    <input type="file" ref={fileInputRef} onChange={handleLoadJSON} accept=".json" className="hidden" />
-                    <input type="file" ref={csvInputRef} onChange={handleImportCSV} accept=".csv" className="hidden" />
-
-                    <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2">
-                        <Upload className="h-4 w-4" /> つづきから始める (JSON)
-                    </Button>
-                    <Button variant="ghost" onClick={() => csvInputRef.current?.click()} className="flex items-center gap-2 text-slate-500">
-                        <FileJson className="h-4 w-4" /> CSVインポート
-                    </Button>
-                    <Button variant="ghost" onClick={handleLoadDemo} className="flex items-center gap-2 text-slate-500 hover:text-indigo-600">
-                        <PlayCircle className="h-4 w-4" /> デモデータ読込
+                    <Button onClick={handleLoadDemo} className="flex items-center gap-2 bg-gradient-to-r from-[#aa7c11] to-[#8a5d3b] hover:from-[#bfa153] hover:to-[#a47b52] text-[#fdfaf5] border-none shadow-lg">
+                        <PlayCircle className="h-4 w-4" /> デモデータを読み込んで試す
                     </Button>
                 </div>
             </div>

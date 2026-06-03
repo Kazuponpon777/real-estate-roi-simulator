@@ -1,73 +1,47 @@
-# React + TypeScript + Vite
+# 🏠 不動産収支シミュレーション (Yashima ROI Simulator)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+八洲建設株式会社（Yashima）の不動産収支シミュレーション管理システムです。
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🎨 デザインテーマ
+- **配色**: プレミアム・クリーム（`#fdfaf5`）＋ゴールド（`#a87c28` / `#d4af37`）とエスプレッソブラウン（`#23150d`）で統一。
+- **背景**: ゴールドの微細なドット（`radial-gradient`）を配置。
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🧠 開発の心得（やったつもりにならない）
 
-## Expanding the ESLint configuration
+本プロジェクトの開発において、以下の行動指針を**厳守**してください。
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+1. **適当に進めず、諦めない**
+   - エラーや不具合が発生した際、表面的な対処で終わらせず、根本原因（ファイルの読み込み順、z-indexの競合、引数の位置ズレなど）を突き止める。
+2. **できたと言い張らない / やったつもりにならない**
+   - ローカル（手元のPC）で動いただけで「完了した」と主張しない。本番サーバーに転送し、実際の画面で自分の目で確認するまでが開発である。
+3. **1ステップごとに報告する**
+   - 一気に進めず、段階ごとに日本語で進捗を報告し、確認と許可を得ながら進める。
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+---
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## 🚀 リリース（デプロイ）手順
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+修正したコードを本番環境（さくらインターネット）へ反映する際は、以下の手順を**必ず順に実行**してください。
+
+### 1. ローカルでのビルド（コンパイル）
+TypeScriptの型チェックおよびアセットのビルドを実行します。
+```bash
+npm run build
 ```
+※ ビルド時にエラーが発生した場合は、必ず修正してビルドが成功することを確認してください。
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 2. FTPデプロイスクリプトの実行
+ビルドされた `dist` フォルダ内の最新ファイルを本番サーバーへアップロードします。
+```bash
+python3 deploy_frontend.py
 ```
+※ スクリプト実行後、`Done!` と出力され、アップロードが正常に完了したことを確認してください。
+
+### 3. 本番環境での実機確認
+ブラウザで直接本番URLにアクセスし、修正箇所が正しく表示・動作するか検証します。
+- **本番URL**: [lp.yashimaltd.com/real-estate](https://lp.yashimaltd.com/real-estate/)
+- **重要**: 変更を検知させるため、必ずブラウザで **「スーパーリロード」**（Mac: `Command` + `Shift` + `R`）を行ってから検証してください。

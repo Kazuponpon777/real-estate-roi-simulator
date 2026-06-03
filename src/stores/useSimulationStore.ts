@@ -8,9 +8,8 @@
  */
 
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { persist } from 'zustand/middleware';
 import type { TaxMode } from '../utils/taxCalculations';
-import { validateAndSanitizeUrl } from '../utils/validation';
 import {
     calculateAutoStampDuty,
     calculateAutoRegistrationTax,
@@ -174,6 +173,7 @@ export interface AdvancedSettings {
 }
 
 export interface SimulationData {
+    id?: number; // さくらサーバーMySQL用ID
     title: string;
     mode: SimulationMode;
 
@@ -185,9 +185,34 @@ export interface SimulationData {
     advancedSettings: AdvancedSettings;
 }
 
+export interface SavedSimulationMetadata {
+    id: number;
+    title: string;
+    mode: SimulationMode;
+    created_by: string;
+    creator_name: string;
+    updated_at: string;
+}
+
 interface SimulationState {
     data: SimulationData;
     activeStep: number;
+    viewMode: 'menu' | 'simulator' | 'admin'; // 日本語コメント: 表示画面モードを追加 ('menu': お客様データ一覧メニュー, 'simulator': シミュレーター, 'admin': ユーザー管理)
+
+    // サーバー保存・同期用の状態管理
+    savedList: SavedSimulationMetadata[];
+    isSaving: boolean;
+    isLoadingList: boolean;
+    isLoadingData: boolean;
+    saveError: string | null;
+    loadError: string | null;
+    listError: string | null;
+
+    // ログイン認証状態管理
+    isAuthenticated: boolean | null;
+    isAuthenticating: boolean;
+    authError: string | null;
+    currentUser: { name: string; employee_number: string; is_admin: boolean } | null;
 
     // Actions
     updateData: (updates: Partial<SimulationData>) => void;
@@ -198,10 +223,32 @@ interface SimulationState {
     updateExpenses: (updates: Partial<Expenses>) => void;
     updateAdvancedSettings: (updates: Partial<AdvancedSettings>) => void;
 
+    setViewMode: (mode: 'menu' | 'simulator' | 'admin') => void;
     setStep: (step: number) => void;
     nextStep: () => void;
     prevStep: () => void;
     reset: () => void;
+
+    // 日本語コメント: アカウント管理用の状態とアクション (管理者専用)
+    usersList: { app_users: any[]; employee_users: any[] };
+    isLoadingUsers: boolean;
+    usersError: string | null;
+    fetchUsersList: () => Promise<void>;
+    createUser: (email: string, name: string, is_admin: boolean, password?: string) => Promise<boolean>;
+    updateUser: (id: number | null, email: string, name: string, is_admin: boolean, password?: string, employee_number?: string) => Promise<boolean>;
+    deleteUser: (id: number) => Promise<boolean>;
+
+    // サーバー連携用アクション
+    fetchSavedList: () => Promise<void>;
+    saveSimulation: (title: string) => Promise<boolean>;
+    loadSimulation: (id: number) => Promise<void>;
+    deleteSimulation: (id: number) => Promise<boolean>;
+    clearErrors: () => void;
+
+    // ログイン認証用アクション
+    checkAuthStatus: () => Promise<void>;
+    login: (loginId: string, password: string) => Promise<boolean>;
+    logout: () => Promise<void>;
 
     // Selectors
     getProgress: () => number;
@@ -308,11 +355,41 @@ const INITIAL_DATA: SimulationData = {
     },
 };
 
+// 日本語コメント: 開発環境と本番環境でAPIのベースURLを自動的に切り替えます
+const API_BASE_URL = import.meta.env.DEV
+    ? 'https://lp.yashimaltd.com/real-estate/api'
+    : (() => {
+        const path = window.location.pathname;
+        const base = path.endsWith('/') ? path : path.substring(0, path.lastIndexOf('/') + 1);
+        return `${window.location.origin}${base}api`;
+      })();
+
 export const useSimulationStore = create<SimulationState>()(
     persist(
         (set, get) => ({
             data: INITIAL_DATA,
-            activeStep: 0,
+            activeStep: 1,
+            viewMode: 'menu', // 日本語コメント: 初期表示はメニュー画面に設定
+
+            // サーバー保存・同期用の初期状態
+            savedList: [],
+            isSaving: false,
+            isLoadingList: false,
+            isLoadingData: false,
+            saveError: null,
+            loadError: null,
+            listError: null,
+
+            // ログイン認証用の初期状態
+            isAuthenticated: null,
+            isAuthenticating: false,
+            authError: null,
+            currentUser: null,
+
+            // 日本語コメント: アカウント管理用の初期状態
+            usersList: { app_users: [], employee_users: [] },
+            isLoadingUsers: false,
+            usersError: null,
 
             // Actions
             updateData: (updates) =>
@@ -320,11 +397,9 @@ export const useSimulationStore = create<SimulationState>()(
 
             updateProperty: (updates) =>
                 set((state) => {
+                    // 日本語コメント: リアルタイムサニタイズは入力途中（"ht"など）で入力が消去されるため廃止
+                    // XSS対策は入力フォームのonBlurおよび遷移時のサニタイズにて担保します
                     const nextProperty = { ...state.data.property, ...updates };
-                    // [修正] セキュリティ部署の指摘: 外部フォルダURL入力時のXSS対策
-                    if (updates.cloudFolderUrl !== undefined) {
-                        nextProperty.cloudFolderUrl = updates.cloudFolderUrl ? (validateAndSanitizeUrl(updates.cloudFolderUrl) || '') : '';
-                    }
                     return { data: { ...state.data, property: nextProperty } };
                 }),
 
@@ -332,16 +407,17 @@ export const useSimulationStore = create<SimulationState>()(
                 set((state) => {
                     const nextBudget = { ...state.data.budget, ...updates };
                     const mode = state.data.mode;
+                    const buildingRatio = state.data.advancedSettings.buildingRatio;
 
-                    // 自動計算フラグが有効な場合は自律的に計算を実行 (UI側のuseEffect依存を排除)
+                    // 日本語コメント: 自動計算フラグが有効な場合は自律的に計算を実行。buildingRatioを引数に追加
                     if (nextBudget.isAutoStampDuty !== false) {
                         nextBudget.stampDuty = calculateAutoStampDuty(nextBudget, mode);
                     }
                     if (nextBudget.isAutoRegistrationTax !== false) {
-                        nextBudget.registrationTax = calculateAutoRegistrationTax(nextBudget, mode);
+                        nextBudget.registrationTax = calculateAutoRegistrationTax(nextBudget, mode, buildingRatio);
                     }
                     if (nextBudget.isAutoAcquisitionTax !== false) {
-                        nextBudget.acquisitionTax = calculateAutoAcquisitionTax(nextBudget, mode);
+                        nextBudget.acquisitionTax = calculateAutoAcquisitionTax(nextBudget, mode, buildingRatio);
                     }
                     if (nextBudget.isAutoBrokerageFee !== false) {
                         nextBudget.brokerageFee = calculateAutoBrokerageFee(nextBudget, mode);
@@ -360,12 +436,342 @@ export const useSimulationStore = create<SimulationState>()(
                 set((state) => ({ data: { ...state.data, expenses: { ...state.data.expenses, ...updates } } })),
 
             updateAdvancedSettings: (updates) =>
-                set((state) => ({ data: { ...state.data, advancedSettings: { ...state.data.advancedSettings, ...updates } } })),
+                set((state) => {
+                    const nextSettings = { ...state.data.advancedSettings, ...updates };
+                    const nextBudget = { ...state.data.budget };
+                    const mode = state.data.mode;
 
+                    // 日本語コメント: 建物価格割合（buildingRatio）が変更された場合、関連する自動税金計算をリアルタイム再連動させる
+                    if (updates.buildingRatio !== undefined) {
+                        if (nextBudget.isAutoRegistrationTax !== false) {
+                            nextBudget.registrationTax = calculateAutoRegistrationTax(nextBudget, mode, nextSettings.buildingRatio);
+                        }
+                        if (nextBudget.isAutoAcquisitionTax !== false) {
+                            nextBudget.acquisitionTax = calculateAutoAcquisitionTax(nextBudget, mode, nextSettings.buildingRatio);
+                        }
+                        if (nextBudget.isAutoBrokerageFee !== false) {
+                            nextBudget.brokerageFee = calculateAutoBrokerageFee(nextBudget, mode);
+                        }
+                    }
+
+                    return {
+                        data: {
+                            ...state.data,
+                            advancedSettings: nextSettings,
+                            budget: nextBudget
+                        }
+                    };
+                }),
+
+            setViewMode: (mode) => set({ viewMode: mode }),
             setStep: (step) => set({ activeStep: step }),
             nextStep: () => set((state) => ({ activeStep: Math.min(state.activeStep + 1, 5) })),
-            prevStep: () => set((state) => ({ activeStep: Math.max(state.activeStep - 1, 0) })),
-            reset: () => set({ data: INITIAL_DATA, activeStep: 0 }),
+            prevStep: () => set((state) => {
+                const nextStep = state.activeStep - 1;
+                if (nextStep <= 0) {
+                    return { activeStep: 1, viewMode: 'menu' };
+                }
+                return { activeStep: nextStep };
+            }),
+            reset: () => set({ data: INITIAL_DATA, activeStep: 1, viewMode: 'menu' }),
+
+            // 日本語コメント: サーバーからシミュレーション一覧を非同期取得します
+            fetchSavedList: async () => {
+                set({ isLoadingList: true, listError: null });
+                try {
+                    const response = await fetch(`${API_BASE_URL}/list.php`, {
+                        credentials: 'include'
+                    });
+                    if (!response.ok) throw new Error('一覧の取得に失敗しました');
+                    const result = await response.json();
+                    if (result.status === 'success') {
+                        set({ savedList: result.list || [] });
+                    } else {
+                        throw new Error(result.message || '一覧の取得に失敗しました');
+                    }
+                } catch (err: any) {
+                    set({ listError: err.message || '通信エラーが発生しました' });
+                } finally {
+                    set({ isLoadingList: false });
+                }
+            },
+
+            // 日本語コメント: シミュレーションデータを新規保存または上書き保存します
+            saveSimulation: async (title: string) => {
+                set({ isSaving: true, saveError: null });
+                try {
+                    const currentData = get().data;
+                    const payload = {
+                        id: currentData.id || null,
+                        title: title,
+                        mode: currentData.mode,
+                        data: {
+                            ...currentData,
+                            title: title // 新しいタイトルを設定
+                        }
+                    };
+                    const response = await fetch(`${API_BASE_URL}/save.php`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                        credentials: 'include'
+                    });
+                    if (!response.ok) throw new Error('保存に失敗しました');
+                    const result = await response.json();
+                    if (result.status === 'success') {
+                        // 保存したデータのIDを状態に設定
+                        set((state) => ({
+                            data: { ...state.data, id: result.id, title: title }
+                        }));
+                        // 一覧を再取得
+                        await get().fetchSavedList();
+                        return true;
+                    } else {
+                        throw new Error(result.message || '保存に失敗しました');
+                    }
+                } catch (err: any) {
+                    set({ saveError: err.message || '通信エラーが発生しました' });
+                    return false;
+                } finally {
+                    set({ isSaving: false });
+                }
+            },
+
+            // 日本語コメント: 選択されたIDのデータをサーバーから読み込みます
+            loadSimulation: async (id: number) => {
+                set({ isLoadingData: true, loadError: null });
+                try {
+                    const response = await fetch(`${API_BASE_URL}/load.php?id=${id}`, {
+                        credentials: 'include'
+                    });
+                    if (!response.ok) throw new Error('読み込みに失敗しました');
+                    const result = await response.json();
+                    if (result.status === 'success' && result.data) {
+                        const simData = result.data.data;
+                        const nextData = {
+                            ...simData,
+                            id: result.data.id,
+                            title: result.data.title,
+                            mode: result.data.mode
+                        };
+                        set({ data: nextData, activeStep: 5, viewMode: 'simulator' }); // 日本語コメント: 読み込み時はステップを5(分析)に設定し、シミュレーターを起動
+                    } else {
+                        throw new Error(result.message || '読み込みに失敗しました');
+                    }
+                } catch (err: any) {
+                    set({ loadError: err.message || '通信エラーが発生しました' });
+                } finally {
+                    set({ isLoadingData: false });
+                }
+            },
+
+            // 日本語コメント: 選択されたIDのデータをサーバーから削除します
+            deleteSimulation: async (id: number) => {
+                set({ loadError: null });
+                try {
+                    const response = await fetch(`${API_BASE_URL}/delete.php`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id }),
+                        credentials: 'include'
+                    });
+                    if (!response.ok) throw new Error('削除に失敗しました');
+                    const result = await response.json();
+                    if (result.status === 'success') {
+                        // 削除したデータが現在表示中ならIDを解除
+                        const currentData = get().data;
+                        if (currentData.id === id) {
+                            set((state) => ({ data: { ...state.data, id: undefined } }));
+                        }
+                        await get().fetchSavedList();
+                        return true;
+                    } else {
+                        throw new Error(result.message || '削除に失敗しました');
+                    }
+                } catch (err: any) {
+                    set({ loadError: err.message || '通信エラーが発生しました' });
+                    return false;
+                }
+            },
+
+            // 日本語コメント: 通信エラー状態をクリアします
+            clearErrors: () => set({ saveError: null, loadError: null, listError: null }),
+
+            // 日本語コメント: サーバー側セッションの認証状態を確認します
+            checkAuthStatus: async () => {
+                set({ isAuthenticating: true, authError: null });
+                try {
+                    const response = await fetch(`${API_BASE_URL}/check_auth.php`, {
+                        credentials: 'include'
+                    });
+                    if (!response.ok) throw new Error('認証ステータスの確認に失敗しました');
+                    const result = await response.json();
+                    if (result.status === 'success' && result.authenticated) {
+                        set({ 
+                            isAuthenticated: true,
+                            currentUser: result.user || null
+                        });
+                    } else {
+                        set({ isAuthenticated: false, currentUser: null });
+                    }
+                } catch (err: any) {
+                    set({ isAuthenticated: false, currentUser: null, authError: err.message || '通信エラーが発生しました' });
+                } finally {
+                    set({ isAuthenticating: false });
+                }
+            },
+
+            // 日本語コメント: メールアドレスとパスワードを入力してログインを試みます
+            login: async (loginId: string, password: string) => {
+                set({ isAuthenticating: true, authError: null });
+                try {
+                    const response = await fetch(`${API_BASE_URL}/login.php`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ login_id: loginId, password }),
+                        credentials: 'include'
+                    });
+                    if (!response.ok) {
+                        const errResult = await response.json().catch(() => ({}));
+                        throw new Error(errResult.message || 'ログインIDまたはパスワードが正しくありません。');
+                    }
+                    const result = await response.json();
+                    if (result.status === 'success') {
+                        set({ 
+                            isAuthenticated: true,
+                            currentUser: result.user || null
+                        });
+                        return true;
+                    } else {
+                        throw new Error(result.message || 'ログインに失敗しました');
+                    }
+                } catch (err: any) {
+                    set({ authError: err.message || '通信エラーが発生しました' });
+                    return false;
+                } finally {
+                    set({ isAuthenticating: false });
+                }
+            },
+
+            // 日本語コメント: ログアウト処理を行いセッションを破棄します
+            logout: async () => {
+                try {
+                    await fetch(`${API_BASE_URL}/logout.php`, {
+                        method: 'POST',
+                        credentials: 'include'
+                    });
+                } catch (e) {
+                    console.error('ログアウト通信エラー:', e);
+                }
+                set({ isAuthenticated: false, currentUser: null, data: INITIAL_DATA, activeStep: 1, viewMode: 'menu' });
+            },
+
+            // 日本語コメント: 管理者向けにユーザー一覧を統合取得します
+            fetchUsersList: async () => {
+                set({ isLoadingUsers: true, usersError: null });
+                try {
+                    const response = await fetch(`${API_BASE_URL}/users_list.php`, {
+                        credentials: 'include'
+                    });
+                    if (!response.ok) throw new Error('ユーザー一覧の取得に失敗しました');
+                    const result = await response.json();
+                    if (result.status === 'success') {
+                        set({ usersList: { app_users: result.app_users || [], employee_users: result.employee_users || [] } });
+                    } else {
+                        throw new Error(result.message || 'ユーザー一覧の取得に失敗しました');
+                    }
+                } catch (err: any) {
+                    set({ usersError: err.message || '通信エラーが発生しました' });
+                } finally {
+                    set({ isLoadingUsers: false });
+                }
+            },
+
+            // 日本語コメント: 新規社外アカウントを登録します
+            createUser: async (email, name, is_admin, password) => {
+                set({ isLoadingUsers: true, usersError: null });
+                try {
+                    const payload = { action: 'create', email, name, is_admin: is_admin ? 1 : 0, password };
+                    const response = await fetch(`${API_BASE_URL}/users_manage.php`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                        credentials: 'include'
+                    });
+                    const result = await response.json();
+                    if (response.ok && result.status === 'success') {
+                        await get().fetchUsersList();
+                        return true;
+                    } else {
+                        throw new Error(result.message || 'アカウント作成に失敗しました');
+                    }
+                } catch (err: any) {
+                    set({ usersError: err.message || '通信エラーが発生しました' });
+                    return false;
+                } finally {
+                    set({ isLoadingUsers: false });
+                }
+            },
+
+            // 日本語コメント: 社外アカウントまたは社内社員の権限情報を更新します
+            updateUser: async (id, email, name, is_admin, password, employee_number) => {
+                set({ isLoadingUsers: true, usersError: null });
+                try {
+                    const payload = { 
+                        action: 'update', 
+                        id: id === null ? undefined : id, 
+                        employee_number: employee_number || undefined,
+                        email, 
+                        name, 
+                        is_admin: is_admin ? 1 : 0, 
+                        password: password || undefined 
+                    };
+                    const response = await fetch(`${API_BASE_URL}/users_manage.php`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                        credentials: 'include'
+                    });
+                    const result = await response.json();
+                    if (response.ok && result.status === 'success') {
+                        await get().fetchUsersList();
+                        return true;
+                    } else {
+                        throw new Error(result.message || 'アカウント更新に失敗しました');
+                    }
+                } catch (err: any) {
+                    set({ usersError: err.message || '通信エラーが発生しました' });
+                    return false;
+                } finally {
+                    set({ isLoadingUsers: false });
+                }
+            },
+
+            // 日本語コメント: 社外アカウントを削除します
+            deleteUser: async (id) => {
+                set({ isLoadingUsers: true, usersError: null });
+                try {
+                    const payload = { action: 'delete', id };
+                    const response = await fetch(`${API_BASE_URL}/users_manage.php`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                        credentials: 'include'
+                    });
+                    const result = await response.json();
+                    if (response.ok && result.status === 'success') {
+                        await get().fetchUsersList();
+                        return true;
+                    } else {
+                        throw new Error(result.message || 'アカウント削除に失敗しました');
+                    }
+                } catch (err: any) {
+                    set({ usersError: err.message || '通信エラーが発生しました' });
+                    return false;
+                } finally {
+                    set({ isLoadingUsers: false });
+                }
+            },
 
             getProgress: () => {
                 const state = get().data;
@@ -393,9 +799,42 @@ export const useSimulationStore = create<SimulationState>()(
             },
         }),
         {
-            name: 'yashima-sim-storage', // unique name
-            // [修正] セキュリティ部署の指摘: 機密データ漏洩防止のためlocalStorageからsessionStorageへ変更
-            storage: createJSONStorage(() => sessionStorage),
+            name: 'yashima-sim-storage',
+            // 日本語コメント: セッションストレージ復元時の破損データチェックによるブラウザDoS攻撃の完全回避
+            storage: {
+                getItem: (name) => {
+                    const raw = sessionStorage.getItem(name);
+                    if (!raw) return null;
+                    try {
+                        const parsed = JSON.parse(raw);
+                        // 基本構造の型安全性の検証
+                        if (parsed && parsed.state && parsed.state.data) {
+                            const d = parsed.state.data;
+                            if (
+                                d.property &&
+                                d.budget &&
+                                d.funding && Array.isArray(d.funding.loans) &&
+                                d.rentRoll && Array.isArray(d.rentRoll.roomTypes) &&
+                                d.expenses &&
+                                d.advancedSettings
+                            ) {
+                                return parsed;
+                            }
+                        }
+                        console.warn('検出: セッションデータが破損しています。安全のため初期値へリセットします。');
+                        return null;
+                    } catch (e) {
+                        console.error('セッションデータ解析エラー:', e);
+                        return null;
+                    }
+                },
+                setItem: (name, value) => {
+                    sessionStorage.setItem(name, JSON.stringify(value));
+                },
+                removeItem: (name) => {
+                    sessionStorage.removeItem(name);
+                }
+            }
         }
     )
 );

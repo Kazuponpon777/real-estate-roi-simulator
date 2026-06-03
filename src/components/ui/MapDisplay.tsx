@@ -96,33 +96,56 @@ export const MapDisplay: React.FC<MapDisplayProps> = ({ address, latitude, longi
 
     // Initial load & Address change
     useEffect(() => {
+        // 日本語コメント: アンマウント後の状態更新によるメモリリークを防ぐマウント状態フラグ
+        let isMounted = true;
+        let timer: any = null;
+
         const initCoords = async () => {
             // Prioritize passed lat/lon if available
             if (latitude && longitude) {
-                setCoords({ lat: latitude, lon: longitude });
+                if (isMounted) {
+                    setCoords({ lat: latitude, lon: longitude });
+                }
                 return;
             }
 
             if (!address || address.length < 5) return;
 
-            setLoading(true);
-            const timer = setTimeout(async () => {
-                const result = await searchAddress(address);
-                if (result) {
-                    const newLat = parseFloat(result.lat);
-                    const newLon = parseFloat(result.lon);
-                    setCoords({ lat: newLat, lon: newLon });
-                    // Notify parent of the auto-found location
-                    if (onLocationChange) {
-                        onLocationChange(newLat, newLon);
+            if (isMounted) {
+                setLoading(true);
+            }
+            
+            timer = setTimeout(async () => {
+                try {
+                    const result = await searchAddress(address);
+                    if (isMounted && result) {
+                        const newLat = parseFloat(result.lat);
+                        const newLon = parseFloat(result.lon);
+                        setCoords({ lat: newLat, lon: newLon });
+                        // Notify parent of the auto-found location
+                        if (onLocationChange) {
+                            onLocationChange(newLat, newLon);
+                        }
+                    }
+                } catch (error) {
+                    console.error('ジオコーディングに失敗しました:', error);
+                } finally {
+                    if (isMounted) {
+                        setLoading(false);
                     }
                 }
-                setLoading(false);
             }, 1000);
-
-            return () => clearTimeout(timer);
         };
+        
         initCoords();
+
+        // 日本語コメント: タイマーのクリアとマウント状態フラグの解除を確実に返すクリーンアップ
+        return () => {
+            isMounted = false;
+            if (timer) {
+                clearTimeout(timer);
+            }
+        };
     }, [address]); // Intentionally not including latitude/longitude to avoid loop if parent updates them on change
 
     // If parent updates props manually (outside of our callback), sync state

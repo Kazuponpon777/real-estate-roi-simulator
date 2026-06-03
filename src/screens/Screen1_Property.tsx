@@ -5,7 +5,7 @@ import { InputGroup } from '../components/ui/InputGroup';
 import { Button } from '../components/ui/Button';
 import { ChevronRight, ArrowLeft } from 'lucide-react';
 import { TSUBO_TO_M2 } from '../utils/calculations';
-import { validateProperty, type ValidationErrors } from '../utils/validation';
+import { validateProperty, validateAndSanitizeUrl, type ValidationErrors } from '../utils/validation';
 import { MapDisplay } from '../components/ui/MapDisplay';
 import { DocumentManager } from '../components/ui/DocumentManager';
 import type { PropertyDocument } from '../stores/useSimulationStore';
@@ -37,6 +37,11 @@ export const Screen1_Property: React.FC = () => {
     const isUsedMode = data.mode === 'investment_used';
 
     const handleNext = () => {
+        // 日本語コメント: 遷移時にクラウドフォルダのURLサニタイズを実行
+        if (data.property.cloudFolderUrl) {
+            const sanitized = validateAndSanitizeUrl(data.property.cloudFolderUrl);
+            updateProperty({ cloudFolderUrl: sanitized || '' });
+        }
         const validationErrors = validateProperty(data);
         if (Object.keys(validationErrors).length > 0) {
             setErrors(validationErrors);
@@ -63,18 +68,18 @@ export const Screen1_Property: React.FC = () => {
     return (
         <div className="max-w-4xl mx-auto space-y-8 animate-in pb-20">
             <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-slate-800">物件概要 (Property Details)</h2>
-                <div className="flex space-x-2 bg-slate-100 p-1 rounded-lg">
+                <h2 className="text-2xl font-bold text-[#23150d]">物件概要 (Property Details)</h2>
+                <div className="flex space-x-2 bg-[#ebd9c5]/30 p-1 rounded-lg border border-[#ebd9c5]/60">
                     <button
                         onClick={() => setActiveTab('land')}
-                        className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${activeTab === 'land' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                        className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${activeTab === 'land' ? 'bg-[#fdfaf5] text-[#8c6114] shadow-sm border border-[#e8dcc4]/50' : 'text-[#8c6c59] hover:text-[#23150d]'
                             }`}
                     >
                         敷地概要
                     </button>
                     <button
                         onClick={() => setActiveTab('building')}
-                        className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${activeTab === 'building' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                        className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${activeTab === 'building' ? 'bg-[#fdfaf5] text-[#8c6114] shadow-sm border border-[#e8dcc4]/50' : 'text-[#8c6c59] hover:text-[#23150d]'
                             }`}
                     >
                         建物概要
@@ -85,7 +90,7 @@ export const Screen1_Property: React.FC = () => {
             <div className="grid gap-6">
                 {activeTab === 'land' ? (
                     <Card className="space-y-6">
-                        <h3 className="text-lg font-bold text-slate-700 border-b pb-2 mb-4">敷地情報</h3>
+                        <h3 className="text-lg font-bold text-[#23150d] border-b border-[#ebd9c5] pb-2 mb-4">敷地情報</h3>
 
                         <div className="grid md:grid-cols-2 gap-6">
                             <InputGroup
@@ -98,7 +103,7 @@ export const Screen1_Property: React.FC = () => {
 
                             {/* 【借地リース特別UI】地主への月額地代および土地敷金を入力するフォーム */}
                             {data.mode === 'land_lease' && (
-                                <div className="md:col-span-2 grid md:grid-cols-2 gap-6 p-4 bg-indigo-50/30 rounded-xl border border-indigo-100/50">
+                                <div className="md:col-span-2 grid md:grid-cols-2 gap-6 p-4 bg-[#fcf9f2] rounded-xl border border-[#ebd9c5] shadow-sm">
                                     <InputGroup
                                         label="地主への月額地代"
                                         type="number"
@@ -125,7 +130,7 @@ export const Screen1_Property: React.FC = () => {
                             )}
 
                             <div className="md:col-span-2">
-                                <label className="text-sm font-semibold text-slate-600 block mb-2">地図確認</label>
+                                <label className="text-sm font-bold text-[#23150d]/80 block mb-2">地図確認</label>
                                 <MapDisplay
                                     address={data.property.address}
                                     latitude={data.property.latitude}
@@ -136,70 +141,66 @@ export const Screen1_Property: React.FC = () => {
 
                             {/* 【ダイナミック表示】敷地面積の入力基準・間口奥行は新築(land_new)のみ表示 */}
                             {isLandMode && (
-                                <div className="md:col-span-2 grid md:grid-cols-2 gap-6 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                <div className="md:col-span-2 grid md:grid-cols-2 gap-6 p-4 bg-[#ebd9c5]/15 rounded-xl border border-[#ebd9c5]">
                                     <div className="space-y-4">
-                                        <label className="text-sm font-semibold text-slate-600">敷地面積の入力基準</label>
+                                        <label className="text-sm font-bold text-[#23150d]/85">敷地面積の入力基準</label>
                                         <div className="flex gap-4">
                                             <label className="flex items-center gap-2 cursor-pointer">
                                                 <input
                                                     type="radio"
                                                     checked={data.property.landAreaMode === 'public'}
                                                     onChange={() => updateProperty({ landAreaMode: 'public' })}
-                                                    className="text-blue-600 focus:ring-blue-500"
+                                                    className="text-[#a87c28] focus:ring-[#a87c28]/40 accent-[#a87c28]"
                                                 />
-                                                <span className="text-sm text-slate-700">公簿面積</span>
+                                                <span className="text-sm font-bold text-[#23150d]/75">公簿面積</span>
                                             </label>
                                             <label className="flex items-center gap-2 cursor-pointer">
                                                 <input
                                                     type="radio"
                                                     checked={data.property.landAreaMode === 'actual'}
                                                     onChange={() => updateProperty({ landAreaMode: 'actual' })}
-                                                    className="text-blue-600 focus:ring-blue-500"
+                                                    className="text-[#a87c28] focus:ring-[#a87c28]/40 accent-[#a87c28]"
                                                 />
-                                                <span className="text-sm text-slate-700">実測面積</span>
+                                                <span className="text-sm font-bold text-[#23150d]/75">実測面積</span>
                                             </label>
                                         </div>
 
                                         <div className="space-y-2">
                                             <div className="flex justify-between items-center">
-                                                <label className="text-xs font-semibold text-slate-500">面積単位の選択</label>
-                                                <div className="flex bg-slate-100 p-0.5 rounded-lg text-[10px] font-bold border border-slate-200">
+                                                <label className="text-xs font-bold text-[#8c6c59]">面積単位の選択</label>
+                                                <div className="flex bg-[#ebd9c5]/35 p-0.5 rounded-lg text-[10px] font-bold border border-[#ebd9c5]/55">
                                                     <button
                                                         type="button"
                                                         onClick={() => setAreaUnit('m2')}
-                                                        className={`px-2 py-0.5 rounded transition-all ${areaUnit === 'm2' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                                        className={`px-2 py-0.5 rounded transition-all ${areaUnit === 'm2' ? 'bg-[#fdfaf5] text-[#8c6114] shadow-sm' : 'text-[#8c6c59] hover:text-[#23150d]'}`}
                                                     >
                                                         ㎡基準
                                                     </button>
                                                     <button
                                                         type="button"
                                                         onClick={() => setAreaUnit('tsubo')}
-                                                        className={`px-2 py-0.5 rounded transition-all ${areaUnit === 'tsubo' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                                        className={`px-2 py-0.5 rounded transition-all ${areaUnit === 'tsubo' ? 'bg-[#fdfaf5] text-[#8c6114] shadow-sm' : 'text-[#8c6c59] hover:text-[#23150d]'}`}
                                                     >
                                                         坪基準
                                                     </button>
                                                 </div>
                                             </div>
-                                            {areaUnit === 'm2' ? (
-                                                <InputGroup
-                                                    label="敷地面積 (㎡)"
-                                                    type="number"
-                                                    unit="㎡"
-                                                    help="登記簿または実測による敷地の面積。建蔽率・容積率の計算基礎になります"
-                                                    value={data.property.landAreaM2 || ''}
-                                                    onChange={(e) => handleM2Change(parseFloat(e.target.value) || 0)}
-                                                />
-                                            ) : (
-                                                <InputGroup
-                                                    label="敷地面積 (坪)"
-                                                    type="number"
-                                                    unit="坪"
-                                                    help="登記簿または実測による敷地の面積（坪単位）。建蔽率・容積率の計算基礎になります"
-                                                    value={localTsubo || ''}
-                                                    onChange={(e) => handleTsuboChange(parseFloat(e.target.value) || 0)}
-                                                />
-                                            )}
-                                            <div className="text-right text-xs text-slate-400 font-medium font-mono">
+                                            <InputGroup
+                                                label={areaUnit === 'm2' ? "敷地面積 (㎡)" : "敷地面積 (坪)"}
+                                                type="number"
+                                                unit={areaUnit === 'm2' ? "㎡" : "坪"}
+                                                help={areaUnit === 'm2' ? "登記簿または実測による敷地の面積。建蔽率・容積率の計算基礎になります" : "登記簿または実測による敷地の面積（坪単位）。建蔽率・容積率の計算基礎になります"}
+                                                value={areaUnit === 'm2' ? (data.property.landAreaM2 || '') : (localTsubo || '')}
+                                                onChange={(e) => {
+                                                    const val = parseFloat(e.target.value) || 0;
+                                                    if (areaUnit === 'm2') {
+                                                        handleM2Change(val);
+                                                    } else {
+                                                        handleTsuboChange(val);
+                                                    }
+                                                }}
+                                            />
+                                            <div className="text-right text-xs text-[#8c6c59] font-semibold font-mono">
                                                 {areaUnit === 'm2'
                                                     ? `≒ ${(data.property.landAreaM2 ? data.property.landAreaM2 / TSUBO_TO_M2 : 0).toFixed(2)} 坪`
                                                     : `≒ ${(data.property.landAreaM2 || 0).toFixed(2)} ㎡`}
@@ -235,52 +236,48 @@ export const Screen1_Property: React.FC = () => {
                             )}
 
                             {!isLandMode && (
-                                <div className="md:col-span-2 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                <div className="md:col-span-2 p-4 bg-[#ebd9c5]/15 rounded-xl border border-[#ebd9c5]">
                                     <div className="grid md:grid-cols-2 gap-6 items-center">
                                         <div className="space-y-2">
                                             <div className="flex justify-between items-center">
-                                                <label className="text-xs font-semibold text-slate-500">面積単位の選択</label>
-                                                <div className="flex bg-slate-100 p-0.5 rounded-lg text-[10px] font-bold border border-slate-200">
+                                                <label className="text-xs font-bold text-[#8c6c59]">面積単位の選択</label>
+                                                <div className="flex bg-[#ebd9c5]/35 p-0.5 rounded-lg text-[10px] font-bold border border-[#ebd9c5]/55">
                                                     <button
                                                         type="button"
                                                         onClick={() => setAreaUnit('m2')}
-                                                        className={`px-2 py-0.5 rounded transition-all ${areaUnit === 'm2' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                                        className={`px-2 py-0.5 rounded transition-all ${areaUnit === 'm2' ? 'bg-[#fdfaf5] text-[#8c6114] shadow-sm' : 'text-[#8c6c59] hover:text-[#23150d]'}`}
                                                     >
                                                         ㎡基準
                                                     </button>
                                                     <button
                                                         type="button"
                                                         onClick={() => setAreaUnit('tsubo')}
-                                                        className={`px-2 py-0.5 rounded transition-all ${areaUnit === 'tsubo' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                                        className={`px-2 py-0.5 rounded transition-all ${areaUnit === 'tsubo' ? 'bg-[#fdfaf5] text-[#8c6114] shadow-sm' : 'text-[#8c6c59] hover:text-[#23150d]'}`}
                                                     >
                                                         坪基準
                                                     </button>
                                                 </div>
                                             </div>
-                                            {areaUnit === 'm2' ? (
-                                                <InputGroup
-                                                    label="敷地面積 (㎡)"
-                                                    type="number"
-                                                    unit="㎡"
-                                                    help="敷地の登録面積です。"
-                                                    value={data.property.landAreaM2 || ''}
-                                                    onChange={(e) => handleM2Change(parseFloat(e.target.value) || 0)}
-                                                />
-                                            ) : (
-                                                <InputGroup
-                                                    label="敷地面積 (坪)"
-                                                    type="number"
-                                                    unit="坪"
-                                                    help="敷地の登録面積（坪単位）。"
-                                                    value={localTsubo || ''}
-                                                    onChange={(e) => handleTsuboChange(parseFloat(e.target.value) || 0)}
-                                                />
-                                            )}
+                                            <InputGroup
+                                                label={areaUnit === 'm2' ? "敷地面積 (㎡)" : "敷地面積 (坪)"}
+                                                type="number"
+                                                unit={areaUnit === 'm2' ? "㎡" : "坪"}
+                                                help={areaUnit === 'm2' ? "敷地の登録面積です。" : "敷地の登録面積（坪単位）。"}
+                                                value={areaUnit === 'm2' ? (data.property.landAreaM2 || '') : (localTsubo || '')}
+                                                onChange={(e) => {
+                                                    const val = parseFloat(e.target.value) || 0;
+                                                    if (areaUnit === 'm2') {
+                                                        handleM2Change(val);
+                                                    } else {
+                                                        handleTsuboChange(val);
+                                                    }
+                                                }}
+                                            />
                                         </div>
-                                        <div className="text-left text-sm text-slate-500 font-medium font-mono mt-6">
+                                        <div className="text-left text-sm text-[#3d251a] font-bold font-mono mt-6">
                                             {areaUnit === 'm2'
-                                                ? <>坪数換算: <span className="font-bold text-slate-700">{(data.property.landAreaM2 ? data.property.landAreaM2 / TSUBO_TO_M2 : 0).toFixed(2)}</span> 坪</>
-                                                : <>平米換算: <span className="font-bold text-slate-700">{(data.property.landAreaM2 || 0).toFixed(2)}</span> ㎡</>}
+                                                ? <>坪数換算: <span className="text-[#8c6114]">{(data.property.landAreaM2 ? data.property.landAreaM2 / TSUBO_TO_M2 : 0).toFixed(2)}</span> 坪</>
+                                                : <>平米換算: <span className="text-[#8c6114]">{(data.property.landAreaM2 || 0).toFixed(2)}</span> ㎡</>}
                                         </div>
                                     </div>
                                 </div>
@@ -288,13 +285,13 @@ export const Screen1_Property: React.FC = () => {
 
                             {/* 【ダイナミック表示】道路付けは新築(land_new)のみ表示 */}
                             {isLandMode && (
-                                <div className="md:col-span-2 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                                    <h4 className="text-sm font-bold text-slate-700 mb-4">道路付け</h4>
+                                <div className="md:col-span-2 p-4 bg-[#ebd9c5]/15 rounded-xl border border-[#ebd9c5]">
+                                    <h4 className="text-sm font-bold text-[#23150d] mb-4">道路付け</h4>
                                     <div className="grid md:grid-cols-3 gap-4">
                                         <div className="space-y-1.5">
-                                            <label className="text-sm font-semibold text-slate-600">種類</label>
+                                            <label className="text-sm font-bold text-[#23150d]/80">種類</label>
                                             <select
-                                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                                className="w-full rounded-lg border border-[#e8dcc4] bg-white px-3 py-2.5 text-[#23150d] focus:border-[#a87c28] focus:outline-none focus:ring-2 focus:ring-[#a87c28]/20"
                                                 value={data.property.roadType1}
                                                 onChange={(e) => updateProperty({ roadType1: e.target.value })}
                                             >
@@ -329,9 +326,9 @@ export const Screen1_Property: React.FC = () => {
                                 <>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-1.5">
-                                            <label className="text-sm font-semibold text-slate-600">都市計画区域</label>
+                                            <label className="text-sm font-bold text-[#23150d]/80">都市計画区域</label>
                                             <select
-                                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                                className="w-full rounded-lg border border-[#e8dcc4] bg-white px-3 py-2.5 text-[#23150d] focus:border-[#a87c28] focus:outline-none focus:ring-2 focus:ring-[#a87c28]/20"
                                                 value={data.property.urbanizationArea}
                                                 onChange={(e) => updateProperty({ urbanizationArea: e.target.value as any })}
                                             >
@@ -375,20 +372,27 @@ export const Screen1_Property: React.FC = () => {
                             )}
                         </div>
 
-                        <div className="border-t border-slate-100 pt-6 mt-6 space-y-6">
+                        <div className="border-t border-[#ebd9c5] pt-6 mt-6 space-y-6">
                             {/* Cloud Storage Link */}
-                            <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-                                <label className="text-sm font-bold text-slate-700 block mb-2">クラウドストレージ連携 (Google Drive / OneDrive)</label>
-                                <p className="text-xs text-slate-500 mb-3">
+                            <div className="bg-[#fcf9f2] p-4 rounded-xl border border-[#e8dcc4] shadow-sm">
+                                <label className="text-sm font-bold text-[#23150d] block mb-2">クラウドストレージ連携 (Google Drive / OneDrive)</label>
+                                <p className="text-xs text-[#8c6c59] mb-3 font-medium">
                                     元データ（公図・謄本など）が保存されているクラウドフォルダの共有リンクをここに貼り付けておくと、後からすぐにアクセスできます。
                                 </p>
                                 <div className="flex gap-2">
                                     <input
                                         type="url"
                                         placeholder="例: https://drive.google.com/drive/folders/..."
-                                        className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                        className="flex-1 rounded-lg border border-[#e8dcc4] bg-white px-3 py-2 text-sm text-[#23150d] focus:border-[#a87c28] focus:outline-none focus:ring-2 focus:ring-[#a87c28]/20"
                                         value={data.property.cloudFolderUrl || ''}
                                         onChange={(e) => updateProperty({ cloudFolderUrl: e.target.value })}
+                                        onBlur={(e) => {
+                                            const val = e.target.value;
+                                            if (val) {
+                                                const sanitized = validateAndSanitizeUrl(val);
+                                                updateProperty({ cloudFolderUrl: sanitized || '' });
+                                            }
+                                        }}
                                     />
                                     {/* 【XSS脆弱性対策】URLがhttp:// または https:// で始まっている安全なリンクのみ開くボタンを有効化 */}
                                     {data.property.cloudFolderUrl && 
@@ -397,7 +401,7 @@ export const Screen1_Property: React.FC = () => {
                                             href={data.property.cloudFolderUrl}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+                                            className="px-4 py-2 bg-gradient-to-r from-[#aa7c11] to-[#8a5d3b] hover:from-[#bfa153] hover:to-[#a47b52] text-white text-sm font-bold rounded-lg transition-colors flex items-center shadow"
                                         >
                                             開く
                                         </a>
@@ -414,13 +418,13 @@ export const Screen1_Property: React.FC = () => {
                     </Card>
                 ) : (
                     <Card className="space-y-6">
-                        <h3 className="text-lg font-bold text-slate-700 border-b pb-2 mb-4">建物情報</h3>
+                        <h3 className="text-lg font-bold text-[#23150d] border-b border-[#ebd9c5] pb-2 mb-4">建物情報</h3>
 
                         <div className="grid md:grid-cols-2 gap-6">
                             <div className="space-y-1.5">
-                                <label className="text-sm font-semibold text-slate-600">構造</label>
+                                <label className="text-sm font-bold text-[#23150d]/80">構造</label>
                                 <select
-                                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                    className="w-full rounded-lg border border-[#e8dcc4] bg-white px-3 py-2.5 text-[#23150d] focus:border-[#a87c28] focus:outline-none focus:ring-2 focus:ring-[#a87c28]/20"
                                     value={data.property.structure}
                                     onChange={(e) => updateProperty({ structure: e.target.value as any })}
                                 >
@@ -466,9 +470,9 @@ export const Screen1_Property: React.FC = () => {
 
                             {/* 【中古物件専用】築年数（減価償却の算出基礎）を特別ハイライト表示 */}
                             {isUsedMode && (
-                                <div className="md:col-span-2 p-5 bg-amber-50/50 rounded-2xl border border-amber-200/60 shadow-sm space-y-3">
+                                <div className="md:col-span-2 p-5 bg-[#fcf9f2] rounded-2xl border border-[#ebd9c5] shadow-sm space-y-3">
                                     <div className="flex justify-between items-center">
-                                        <span className="text-xs font-bold text-amber-800 uppercase tracking-wider bg-amber-100 px-2 py-0.5 rounded-full">
+                                        <span className="text-xs font-bold text-[#8c6114] uppercase tracking-wider bg-[#fcf5e3] px-2.5 py-0.5 rounded-full border border-[#ebd9c5]">
                                             中古シミュレーションの超重要項目
                                         </span>
                                     </div>
@@ -483,7 +487,7 @@ export const Screen1_Property: React.FC = () => {
                                             updateAdvancedSettings({ buildingAge: isNaN(val) ? 0 : val });
                                         }}
                                     />
-                                    <p className="text-[11px] text-amber-700 leading-relaxed">
+                                    <p className="text-[11px] text-[#8c6114] font-medium leading-relaxed">
                                         💡 構造（RC:47年、S:34年、木造:22年）の法定耐用年数を超えている場合でも、「法定耐用年数 × 20%」が償却期間として適用されます。
                                     </p>
                                 </div>
@@ -493,12 +497,13 @@ export const Screen1_Property: React.FC = () => {
                 )}
             </div>
 
-            <div className="flex justify-between pt-6 border-t border-slate-200">
-                <Button variant="ghost" onClick={prevStep} className="flex items-center gap-2">
+            <div className="flex justify-between pt-6 border-t border-[#ebd9c5]">
+                {/* 戻るボタンで安全にメニュー画面または前のステップへ戻る */}
+                <Button variant="ghost" onClick={prevStep} className="flex items-center gap-2 text-[#8c6114] hover:text-[#23150d] hover:bg-[#ebd9c5]/20">
                     <ArrowLeft className="h-4 w-4" /> 戻る
                 </Button>
                 {Object.keys(errors).length > 0 && (
-                    <div className="px-4 py-3 bg-rose-50 border border-rose-200 rounded-lg text-sm text-rose-700">
+                    <div className="px-4 py-3 bg-rose-50 border border-rose-200 rounded-lg text-sm text-rose-700 font-semibold shadow-sm">
                         ❗ 入力内容に不足があります: {Object.values(errors).join(', ')}
                     </div>
                 )}

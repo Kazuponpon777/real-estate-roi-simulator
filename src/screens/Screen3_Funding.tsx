@@ -78,7 +78,7 @@ export const Screen3_Funding: React.FC = () => {
     return (
         <div className="max-w-4xl mx-auto space-y-8 animate-in pb-20">
             <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-slate-800">資金計画 (Financial Plan)</h2>
+                <h2 className="text-2xl font-bold text-[#23150d]">資金計画 (Financial Plan)</h2>
             </div>
 
             <div className="grid gap-6">
@@ -115,7 +115,7 @@ export const Screen3_Funding: React.FC = () => {
                 <Card title="借入金">
                     <div className="space-y-4">
                         {data.funding.loans.map((loan) => (
-                            <div key={loan.id} className="grid md:grid-cols-12 gap-4 items-end p-4 bg-slate-50 rounded-lg border border-slate-100">
+                            <div key={loan.id} className="grid md:grid-cols-12 gap-4 items-end p-4 bg-[#fcf9f2] rounded-lg border border-[#ebd9c5] shadow-sm">
                                 <div className="md:col-span-3">
                                     <InputGroup
                                         label="金融機関名"
@@ -153,7 +153,7 @@ export const Screen3_Funding: React.FC = () => {
                                 </div>
                                 <div className="md:col-span-2 flex justify-end pb-1">
                                     {data.funding.loans.length > 1 && (
-                                        <Button variant="ghost" size="sm" onClick={() => removeLoan(loan.id)} className="text-red-500 hover:text-red-600 hover:bg-red-50">
+                                        <Button variant="ghost" size="sm" onClick={() => removeLoan(loan.id)} className="text-red-500 hover:text-red-650 hover:bg-rose-50">
                                             <Trash2 className="h-4 w-4" />
                                         </Button>
                                     )}
@@ -161,25 +161,28 @@ export const Screen3_Funding: React.FC = () => {
                             </div>
                         ))}
 
-                        <Button variant="secondary" onClick={addLoan} className="w-full flex items-center justify-center gap-2 border-dashed border-2 border-slate-300 bg-transparent hover:bg-slate-50 hover:border-slate-400">
+                        <Button variant="secondary" onClick={addLoan} className="w-full flex items-center justify-center gap-2 border-dashed border-2 border-[#d4af37]/45 bg-transparent hover:bg-[#ebd9c5]/25 text-[#a87c28] hover:border-[#a87c28]">
                             <Plus className="h-4 w-4" /> 借入を追加
                         </Button>
                     </div>
                 </Card>
 
-                <div className={`p-6 rounded-xl shadow-lg flex items-center justify-between transition-colors duration-300 ${isBalanced ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-white'
+                <div className={`p-6 rounded-xl shadow-lg flex items-center justify-between border transition-all duration-300 ${
+                    isBalanced 
+                        ? 'bg-[#1e3d2f] border-[#ebd9c5]/20 text-[#fdfaf5]' 
+                        : 'bg-[#2b170e] border-[#ebd9c5]/35 text-[#fdfaf5]'
                     }`}>
                     <div>
                         <div className="text-sm opacity-90 mb-1">調達合計 (Funding)</div>
-                        <div className="text-3xl font-bold">{formatManYen(totalFunding)} 万円</div>
-                        <div className="text-xs opacity-75 mt-1">
+                        <div className="text-3xl font-bold font-serif">{formatManYen(totalFunding)} 万円</div>
+                        <div className="text-xs opacity-75 mt-1 font-semibold">
                             総事業費: {formatManYen(totalBudget)} 万円
                             {!isBalanced && ` (差額: ${formatManYen(balance)} 万円)`}
                         </div>
                     </div>
                     <div className="text-right">
                         <div className="text-sm opacity-90">Cover Ratio</div>
-                        <div className={`text-2xl font-bold ${totalBudget > 0 ? (totalFunding / totalBudget * 100) >= 100 ? 'text-white' : 'text-yellow-300' : ''}`}>
+                        <div className={`text-2xl font-bold ${totalBudget > 0 ? (totalFunding / totalBudget * 100) >= 100 ? 'text-[#fdfaf5]' : 'text-[#d4af37]' : ''}`}>
                             {totalBudget > 0 ? (totalFunding / totalBudget * 100).toFixed(1) : 0}%
                         </div>
                     </div>
@@ -188,7 +191,7 @@ export const Screen3_Funding: React.FC = () => {
 
             {/* エラーメッセージの表示 */}
             {Object.keys(errors).length > 0 && (
-                <div className="px-4 py-3 bg-rose-50 border border-rose-200 rounded-lg text-sm text-rose-700 font-medium">
+                <div className="px-4 py-3 bg-rose-50 border border-rose-200 rounded-lg text-sm text-rose-700 font-semibold shadow-sm">
                     ⚠️ 入力内容に不足があります:
                     <ul className="list-disc pl-5 mt-1 space-y-1">
                         {Object.values(errors).map((err, i) => (
@@ -198,7 +201,7 @@ export const Screen3_Funding: React.FC = () => {
                 </div>
             )}
 
-            <div className="flex justify-between pt-6 border-t border-slate-200">
+            <div className="flex justify-between pt-6 border-t border-[#ebd9c5]">
                 <Button variant="ghost" onClick={prevStep} className="flex items-center gap-2">
                     <ArrowLeft className="h-4 w-4" /> 戻る
                 </Button>

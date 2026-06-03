@@ -166,15 +166,9 @@ export const calculateLongTermProjection = (data: SimulationData, years: number 
             managementFee = data.expenses.managementFeeFixed * 12;
         }
 
-        // [修正] QA部の指摘: 5年一括火災保険料は期間按分して fixedOpexPart に毎年計上するため、opex計算上でのスポット加算は廃止します。
+        // 日本語コメント: 5年一括火災保険料は期間按分して fixedOpexPart に毎年計上するため、スポット加算での二重引きは廃止します。
         const opex = fixedOpexPart + managementFee;
         const noi = effectiveIncome - opex;
-
-        // 火災保険料（5年一括）の5年周期スポット更新キャッシュアウト (6, 11, 16, 21, 26, 31年目の期首に再発生)
-        let spotFireInsuranceOutflow = 0;
-        if (isNewOrLease && y > 1 && y % 5 === 1) {
-            spotFireInsuranceOutflow = (data.budget.fireInsurancePrepaid || 0) * 10000;
-        }
 
         // === 3. Debt Service (with interest rate rise) ===
         let annualAds = 0;
@@ -184,7 +178,14 @@ export const calculateLongTermProjection = (data: SimulationData, years: number 
 
         loans = loans.map(loan => {
             if (y > loan.duration) {
-                return { ...loan, remainingBalance: 0 };
+                // 日本語コメント: 完済後は金利・返済額等を完全に0に初期化し、Stale（残存）データを防止する
+                return { 
+                    ...loan, 
+                    remainingBalance: 0,
+                    yearAds: 0,
+                    yearInterest: 0,
+                    yearPrincipal: 0
+                };
             }
 
             // Apply interest rate rise (cumulative per year)
@@ -246,8 +247,8 @@ export const calculateLongTermProjection = (data: SimulationData, years: number 
         }
 
         // === 5. BTCF (税引前キャッシュフロー) ===
-        // 営業純利益 (NOI) - ローン返済 (ADS) - 建設協力金返還額 - [修正]火災保険スポット支払額
-        const btcf = noi - annualAds - annualCooperationReturnYen - spotFireInsuranceOutflow;
+        // 日本語コメント: 営業純利益 (NOI) - ローン返済 (ADS) - 建設協力金返還額 (スポット保険料はOPEX平準化のため除外)
+        const btcf = noi - annualAds - annualCooperationReturnYen;
 
         // === 6. 減価償却費 ＆ 課税所得 (Phase 1) ===
         const yearDepreciation = getYearlyDepreciation(depInfo, y);
@@ -323,23 +324,33 @@ export const calculateIRR = (cashflows: number[], guess: number = 0.1): number |
 
         for (let t = 0; t < cashflows.length; t++) {
             const factor = Math.pow(1 + rate, t);
+            // 複利係数が無限大(Infinity)になった場合の安全処理
+            if (!isFinite(factor) || factor === 0) return null;
+            
             npv += cashflows[t] / factor;
             dnpv -= t * cashflows[t] / (factor * (1 + rate));
         }
 
+        // 日本語コメント: 計算途中の値がNaNや無限大(Infinity)になった場合は計算不能として安全に早期リターンする
+        if (isNaN(npv) || !isFinite(npv) || isNaN(dnpv) || !isFinite(dnpv)) return null;
         if (Math.abs(npv) < tolerance) return rate;
         if (Math.abs(dnpv) < tolerance) return null; // derivative too small
 
-        rate = rate - npv / dnpv;
+        const nextRate = rate - npv / dnpv;
+        if (isNaN(nextRate) || !isFinite(nextRate)) return null;
+        
+        rate = nextRate;
         if (rate < -1) rate = -0.99; // prevent divergence
     }
 
     // イテレーション終了後、未収束の場合は安全に null を返す
     let finalNpv = 0;
     for (let t = 0; t < cashflows.length; t++) {
-        finalNpv += cashflows[t] / Math.pow(1 + rate, t);
+        const finalFactor = Math.pow(1 + rate, t);
+        if (!isFinite(finalFactor) || finalFactor === 0) return null;
+        finalNpv += cashflows[t] / finalFactor;
     }
-    if (Math.abs(finalNpv) >= tolerance) {
+    if (isNaN(finalNpv) || Math.abs(finalNpv) >= tolerance) {
         return null; 
     }
 
@@ -418,7 +429,8 @@ export const getInvestmentMetrics = (
             ownCapitalYen,
             depInfo,
             isLeaseMode,
-            landLeaseDepositYen
+            landLeaseDepositYen,
+            (data.budget.demolitionCost ?? 0) * 10000 // 日本語コメント: 解体費用 (円)
         );
         netSaleProceeds = exit.netSaleProceeds;
     }

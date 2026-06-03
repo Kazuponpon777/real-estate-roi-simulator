@@ -22,31 +22,42 @@ export const AppendicesPage: React.FC<AppendicesPageProps> = ({ data, pageNumber
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        // 日本語コメント: アンマウント後の非同期描画によるメモリリークを防ぐマウント状態フラグ
+        let isMounted = true;
+        // 日本語コメント: メモリリークを完全に防止するため、生成された全てのBlob URLを追跡してクリーンアップします
+        const createdUrls: string[] = [];
+
         const loadDocuments = async () => {
             if (!data.property.documents || data.property.documents.length === 0) {
-                setLoading(false);
+                if (isMounted) {
+                    setLoading(false);
+                }
                 return;
             }
 
             const loadedImages: { id: string; name: string; src: string; isPdfPage?: boolean }[] = [];
 
             for (const doc of data.property.documents) {
+                if (!isMounted) break;
                 try {
                     const file = await getFile(doc.id);
                     if (!file) continue;
 
                     if (file.type.startsWith('image/')) {
                         const src = URL.createObjectURL(file.data);
+                        createdUrls.push(src);
                         loadedImages.push({ id: doc.id, name: doc.name, src });
                     } else if (file.type === 'application/pdf') {
                         // Render PDF first page to image
                         const arrayBuffer = await file.data.arrayBuffer();
+                        if (!isMounted) break;
                         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
                         // Render first 2 pages max
                         const pagesToRender = Math.min(pdf.numPages, 2);
 
                         for (let i = 1; i <= pagesToRender; i++) {
+                            if (!isMounted) break;
                             const page = await pdf.getPage(i);
                             const viewport = page.getViewport({ scale: 1.5 }); // High quality for print
                             const canvas = document.createElement('canvas');
@@ -60,6 +71,7 @@ export const AppendicesPage: React.FC<AppendicesPageProps> = ({ data, pageNumber
                                     viewport: viewport
                                 };
                                 await page.render(renderContext).promise;
+                                if (!isMounted) break;
                                 loadedImages.push({
                                     id: `${doc.id}-p${i}`,
                                     name: `${doc.name} (p.${i})`,
@@ -74,11 +86,25 @@ export const AppendicesPage: React.FC<AppendicesPageProps> = ({ data, pageNumber
                 }
             }
 
-            setImages(loadedImages);
-            setLoading(false);
+            if (isMounted) {
+                setImages(loadedImages);
+                setLoading(false);
+            }
         };
 
         loadDocuments();
+
+        // 日本語コメント: クリーンアップ（アンマウント）時にマウント状態を解除し、生成されたBlob URLを全解放
+        return () => {
+            isMounted = false;
+            createdUrls.forEach(url => {
+                try {
+                    URL.revokeObjectURL(url);
+                } catch (e) {
+                    console.error('Blob URLの解放に失敗しました:', e);
+                }
+            });
+        };
     }, [data.property.documents]);
 
     return (

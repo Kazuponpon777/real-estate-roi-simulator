@@ -122,6 +122,7 @@ export const calculateExitAnalysis = (
     depInfo: DepreciationInfo,
     isLeaseMode: boolean = false,  // [修正] QA部の指摘: 借地リースモード判定
     landLeaseDeposit: number = 0,  // [修正] QA部の指摘: 土地敷金 (円)
+    demolitionCost: number = 0,    // 日本語コメント: 解体費用 (円)
 ): ExitAnalysis => {
     const saleYearData = projection.find(p => p.year === saleYear);
     if (!saleYearData) {
@@ -133,9 +134,12 @@ export const calculateExitAnalysis = (
         };
     }
 
-    // Sale price from Cap Rate
-    const salePrice = estimateSalePrice(saleYearData.noi, exitCapRate);
-    const saleExpenses = calculateSaleExpenses(salePrice);
+    // 日本語コメント: 借地リースの場合は売却によるExitが想定されないため売却想定額は0円
+    const salePrice = isLeaseMode ? 0 : estimateSalePrice(saleYearData.noi, exitCapRate);
+    // 日本語コメント: 借地リースの場合は売却諸経費（仲介手数料・印紙税等）は発生しないため0円
+    const saleExpenses = isLeaseMode
+        ? { brokerageFee: 0, stampDuty: 0, otherExpenses: 0, total: 0 }
+        : calculateSaleExpenses(salePrice);
 
     // Loan balance at sale year
     const loanBalanceAtSale = saleYearData.loanBalance;
@@ -147,18 +151,24 @@ export const calculateExitAnalysis = (
     }
 
     // Capital gains tax
-    const capitalGainsTax = calculateCapitalGainsTax(
-        salePrice,
-        originalBuildingCost,
-        accumulatedDepreciation,
-        saleExpenses.total,
-        saleYear,
-        isLeaseMode ? 0 : landPrice, // [修正] QA部の指摘: 借地リース時は土地の所有権がないため土地の取得費は0円で計算
-    );
+    // 日本語コメント: 借地リースの場合は売却を行わないため、譲渡所得税は発生せず0円
+    const capitalGainsTax = isLeaseMode
+        ? 0
+        : calculateCapitalGainsTax(
+            salePrice,
+            originalBuildingCost,
+            accumulatedDepreciation,
+            saleExpenses.total,
+            saleYear,
+            isLeaseMode ? 0 : landPrice,
+        );
 
     // Net sale proceeds
-    // [修正] QA部の指摘: 借地リース時は地主に預けていた土地敷金がExit時に全額返還され、キャッシュフローに加算されます
-    const netSaleProceeds = salePrice - loanBalanceAtSale - saleExpenses.total - capitalGainsTax + (isLeaseMode ? landLeaseDeposit : 0);
+    // [修正] QA部の指摘: 借地リース時は更地返還となるため売却額0円。
+    // 手残りは「土地敷金の全額返還」 - 「未返済ローン」 - 「建物解体費用」になります
+    const netSaleProceeds = isLeaseMode
+        ? (0 - loanBalanceAtSale - demolitionCost + landLeaseDeposit)
+        : (salePrice - loanBalanceAtSale - saleExpenses.total - capitalGainsTax);
 
     // Total cashflow during holding period
     const totalCashflowDuringHolding = projection
@@ -203,8 +213,9 @@ export const generateExitTable = (
     yearsToAnalyze: number[] = [5, 10, 15, 20, 25, 30],
     isLeaseMode: boolean = false,
     landLeaseDeposit: number = 0,
+    demolitionCost: number = 0, // 日本語コメント: 解体費用 (円)
 ): ExitAnalysis[] => {
     return yearsToAnalyze.map(year =>
-        calculateExitAnalysis(projection, year, exitCapRate, originalBuildingCost, landPrice, ownCapital, depInfo, isLeaseMode, landLeaseDeposit)
+        calculateExitAnalysis(projection, year, exitCapRate, originalBuildingCost, landPrice, ownCapital, depInfo, isLeaseMode, landLeaseDeposit, demolitionCost)
     );
 };

@@ -33,3 +33,10 @@ test_data.json
 .env
 .env.*
 !.env.example
+
+# Deploy scripts (containing FTP credentials)
+deploy_api.py
+deploy_frontend.py
+
+# Database connection credentials
+api/db.php

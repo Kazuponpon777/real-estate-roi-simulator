@@ -25,8 +25,58 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
         if (!e.target.files || e.target.files.length === 0) return;
 
         const file = e.target.files[0];
+        
+        // 日本語コメント: 1. 拡張子と簡易MIMEのチェック
+        const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
+        const fileNameLower = file.name.toLowerCase();
+        const hasAllowedExt = allowedExtensions.some(ext => fileNameLower.endsWith(ext));
+        
+        if (!hasAllowedExt) {
+            alert('PDF、JPEG、PNG形式の資料ファイルのみ登録できます。');
+            e.target.value = '';
+            return;
+        }
+
         setIsUploading(true);
         try {
+            // 日本語コメント: 2. マジックナンバー（先頭数バイトのヘッダ）の厳格な検証によるXSS等偽装スクリプト攻撃の防止
+            const checkMagicNumber = (): Promise<boolean> => {
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = (evt) => {
+                        if (evt.target?.readyState === FileReader.DONE) {
+                            const arr = new Uint8Array(evt.target.result as ArrayBuffer);
+                            let header = "";
+                            for (let i = 0; i < Math.min(arr.length, 4); i++) {
+                                header += arr[i].toString(16).padStart(2, '0');
+                            }
+                            header = header.toUpperCase();
+                            
+                            // PDF: %PDF (25 50 44 46)
+                            // PNG: 89 50 4E 47
+                            // JPEG: FF D8 FF
+                            const isPDF = header.startsWith("25504446");
+                            const isPNG = header.startsWith("89504E47");
+                            const isJPEG = header.startsWith("FFD8FF");
+                            
+                            resolve(isPDF || isPNG || isJPEG);
+                        } else {
+                            resolve(false);
+                        }
+                    };
+                    const blobSlice = file.slice(0, 4);
+                    reader.readAsArrayBuffer(blobSlice);
+                });
+            };
+
+            const isValidFile = await checkMagicNumber();
+            if (!isValidFile) {
+                alert('ファイル形式が不正であるか、偽装されている可能性があります。PDF、JPEG、PNGのみ対応しています。');
+                setIsUploading(false);
+                e.target.value = '';
+                return;
+            }
+
             const id = await saveFile(file);
             const newDoc: PropertyDocument = {
                 id,
@@ -40,7 +90,6 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
             alert('ファイルの保存に失敗しました。');
         } finally {
             setIsUploading(false);
-            // Reset input
             e.target.value = '';
         }
     };
@@ -50,9 +99,33 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
         try {
             const storedFile = await getFile(doc.id);
             if (storedFile && storedFile.data) {
-                const url = URL.createObjectURL(storedFile.data);
-                window.open(url, '_blank');
-                // URL.revokeObjectURL(url); // Should handle cleanup, but for now let browser handle it on unload or create a specialized viewer
+                // 日本語コメント: 安全なMIMEタイプ一覧。これ以外はSame-Origin実行を防ぐためダウンロードを強制
+                const safeTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
+                const fileType = storedFile.data.type || doc.type;
+                const isSafe = safeTypes.includes(fileType);
+                
+                if (isSafe) {
+                    // 日本語コメント: 安全な型として再度Blobをパックし、Blob URLを生成して開く
+                    const safeBlob = new Blob([storedFile.data], { type: fileType });
+                    const url = URL.createObjectURL(safeBlob);
+                    
+                    const newWindow = window.open();
+                    if (newWindow) {
+                        newWindow.location.href = url;
+                    } else {
+                        alert('ポップアップがブロックされました。ブラウザの設定を変更して許可してください。');
+                    }
+                } else {
+                    // 日本語コメント: 安全でない場合は window.open を行わず、ダウンロードを強制してブラウザコンテキストからの実行を防衛
+                    const url = URL.createObjectURL(storedFile.data);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = doc.name;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                }
             } else {
                 alert('ファイルが見つかりません。');
             }

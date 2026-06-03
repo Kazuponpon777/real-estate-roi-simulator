@@ -158,8 +158,10 @@ export const calculateIndividualTax = (
         // 所得税の還付額（マイナス値 = 節税効果）
         const incomeTaxRefund = totalTaxWithLoss - otherTax;
         
-        // 住民税の減額分（赤字額の10%が住民税から控除される）
-        const residentTaxSaving = taxableIncome * RESIDENT_TAX_RATE; // 負の値
+        // 日本語コメント: 住民税の減額分（赤字額の10%が住民税から控除される）
+        // ただし、他所得から支払う住民税額（otherIncome * 10%）が上限となり、それを超えて過大還付になることはありません
+        const maxResidentTaxSaving = otherIncome * RESIDENT_TAX_RATE; // 他所得にかかる住民税額 (正の値)
+        const residentTaxSaving = Math.max(-maxResidentTaxSaving, taxableIncome * RESIDENT_TAX_RATE); // 負の値同士でMaxをとることで還付額(絶対値)を制限
         
         // 節税効果の合計（マイナス値として返し、ATCF = BTCF - TaxAmount でキャッシュが『増える』ようにする）
         return Math.floor(incomeTaxRefund + residentTaxSaving);

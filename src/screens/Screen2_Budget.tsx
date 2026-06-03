@@ -57,7 +57,7 @@ export const Screen2_Budget: React.FC = () => {
     return (
         <div className="max-w-4xl mx-auto space-y-8 animate-in pb-20">
             <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-slate-800">事業予算・建築費 (Project Budget)</h2>
+                <h2 className="text-2xl font-bold text-[#23150d]">事業予算・建築費 (Project Budget)</h2>
                 <Button variant="secondary" size="sm" onClick={calculateBrokerageEstimate} className="flex items-center gap-2">
                     <RefreshCw className="h-4 w-4" /> 諸経費概算計算
                 </Button>
@@ -186,18 +186,17 @@ export const Screen2_Budget: React.FC = () => {
                     </div>
                 </Card>
 
-                <div className="bg-blue-600 text-white p-6 rounded-xl shadow-lg flex items-center justify-between">
+                <div className="bg-gradient-to-r from-[#aa7c11] to-[#8a5d3b] text-[#fdfaf5] p-6 rounded-xl shadow-lg flex items-center justify-between border border-[#ebd9c5]/30">
                     <div>
-                        <span className="text-blue-100 text-sm uppercase tracking-wider font-bold">総事業費 (Total Budget)</span>
-                        <div className="text-3xl font-bold mt-1">{formatManYen(totalBudget)} 万円</div>
+                        <span className="text-[#fdfaf5]/80 text-sm uppercase tracking-wider font-bold">総事業費 (Total Budget)</span>
+                        <div className="text-3xl font-bold mt-1 font-serif">{formatManYen(totalBudget)} 万円</div>
                     </div>
-                    {/* Optional: Add percentage breakdown or chart here */}
                 </div>
             </div>
 
             {/* エラーメッセージの表示 */}
             {Object.keys(errors).length > 0 && (
-                <div className="px-4 py-3 bg-rose-50 border border-rose-200 rounded-lg text-sm text-rose-700 font-medium">
+                <div className="px-4 py-3 bg-rose-50 border border-rose-200 rounded-lg text-sm text-rose-700 font-semibold shadow-sm">
                     ⚠️ 入力内容に不足があります:
                     <ul className="list-disc pl-5 mt-1 space-y-1">
                         {Object.values(errors).map((err, i) => (
@@ -207,7 +206,7 @@ export const Screen2_Budget: React.FC = () => {
                 </div>
             )}
 
-            <div className="flex justify-between pt-6 border-t border-slate-200">
+            <div className="flex justify-between pt-6 border-t border-[#ebd9c5]">
                 <Button variant="ghost" onClick={prevStep} className="flex items-center gap-2">
                     <ArrowLeft className="h-4 w-4" /> 戻る
                 </Button>

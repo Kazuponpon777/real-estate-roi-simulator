@@ -33,7 +33,7 @@ export const generateScenarios = (data: SimulationData): ScenarioResult[] => {
         {
             name: 'optimistic',
             label: '楽観',
-            color: '#10b981',
+            color: '#1e3d2f', // 高級感のあるフォレストグリーン
             overrides: {
                 rentDeclineRate: Math.max(base.rentDeclineRate - 0.5, 0),
                 vacancyRiseRate: Math.max(base.vacancyRiseRate - 0.3, 0),
@@ -43,13 +43,13 @@ export const generateScenarios = (data: SimulationData): ScenarioResult[] => {
         {
             name: 'standard',
             label: '標準',
-            color: '#6366f1',
-            overrides: {}, // Use current settings as-is
+            color: '#8c6114', // アンティークゴールド
+            overrides: {}, // 現在の設定をそのまま使用
         },
         {
             name: 'pessimistic',
             label: '悲観',
-            color: '#ef4444',
+            color: '#a04e3a', // テラコッタブラウン（本革調の赤）
             overrides: {
                 rentDeclineRate: base.rentDeclineRate + 0.5,
                 vacancyRiseRate: base.vacancyRiseRate + 0.3,

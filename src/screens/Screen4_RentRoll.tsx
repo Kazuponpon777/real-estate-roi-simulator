@@ -96,10 +96,10 @@ export const Screen4_RentRoll: React.FC = () => {
 
 
         return (
-            <div className="overflow-x-auto rounded-xl border border-slate-100 shadow-sm bg-white">
+            <div className="overflow-x-auto rounded-xl border border-[#ebd9c5]/60 shadow-sm bg-white">
                 {/* 借地リース時は列数が多いため最小幅を1150pxに広げ、入力欄が絶対に潰れないようにバランスを調整 */}
                 <table className="w-full text-sm text-left border-collapse" style={{ minWidth: data.mode === 'land_lease' ? '1150px' : '850px' }}>
-                    <thead className="bg-slate-50 text-slate-500 uppercase font-bold text-xs border-b border-slate-100">
+                    <thead className="bg-[#fcf9f2] text-[#3d251a] uppercase font-bold text-xs border-b border-[#ebd9c5]">
                         <tr>
                             <th className="px-4 py-3.5 w-28 rounded-l-lg">用途</th>
                             <th className="px-4 py-3.5 w-48">間取り・名称</th>
@@ -118,12 +118,12 @@ export const Screen4_RentRoll: React.FC = () => {
                             <th className="px-4 py-3.5 rounded-r-lg w-10 text-center"></th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-[#ebd9c5]/40">
                         {rooms.map((room) => (
-                            <tr key={room.id} className="group hover:bg-slate-50/50 transition-colors">
+                            <tr key={room.id} className="group hover:bg-[#ebd9c5]/10 transition-colors">
                                 <td className="px-4 py-2.5">
                                     <select
-                                        className="w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 transition-all"
+                                        className="w-full rounded-md border border-[#ebd9c5] bg-white px-2 py-1 text-xs font-semibold text-[#3d251a] focus:border-[#a87c28] focus:outline-none focus:ring-1 focus:ring-[#a87c28]/20 transition-all"
                                         value={room.usage || 'residential'}
                                         onChange={(e) => updateRoomType(room.id, { usage: e.target.value as any })}
                                     >
@@ -134,14 +134,14 @@ export const Screen4_RentRoll: React.FC = () => {
                                 <td className="px-4 py-2.5">
                                     <div className="flex items-center gap-1.5 w-full">
                                         <input
-                                            className="flex-1 bg-transparent border-b border-slate-200 hover:border-slate-300 focus:border-indigo-500 focus:outline-none px-1 py-0.5 text-slate-700 placeholder-slate-300 transition-colors text-sm font-medium"
+                                            className="flex-1 bg-transparent border-b border-[#ebd9c5] hover:border-[#a87c28]/60 focus:border-[#a87c28] focus:outline-none px-1 py-0.5 text-[#3d251a] placeholder-slate-300 transition-colors text-sm font-medium"
                                             placeholder={room.usage === 'commercial' ? "例: 店舗A" : "例: 1K"}
                                             value={room.name}
                                             onChange={(e) => updateRoomType(room.id, { name: e.target.value })}
                                         />
-                                        {/* クイック選択プルダウン (選ぶと自動的に左の入力欄にコピーされます) */}
+                                        {/* クイック選択プルダウン */}
                                         <select
-                                            className="rounded border border-slate-200 bg-slate-50 text-[10px] text-slate-500 px-1 py-1 focus:border-indigo-500 focus:outline-none cursor-pointer hover:bg-slate-100 transition-colors"
+                                            className="rounded border border-[#ebd9c5] bg-[#fcf9f2] text-[10px] text-[#8c6114] px-1 py-1 focus:border-[#a87c28] focus:outline-none cursor-pointer hover:bg-[#ebd9c5]/30 transition-colors"
                                             value=""
                                             onChange={(e) => {
                                                 if (e.target.value) {
@@ -176,7 +176,7 @@ export const Screen4_RentRoll: React.FC = () => {
                                 <td className="px-4 py-2.5 text-center">
                                     <input
                                         type="number"
-                                        className="w-16 bg-white border border-slate-200 rounded-md px-2 py-1 text-right focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 text-slate-700 transition-all text-xs"
+                                        className="w-16 bg-white border border-[#ebd9c5] rounded-md px-2 py-1 text-right focus:border-[#a87c28] focus:outline-none focus:ring-1 focus:ring-[#a87c28]/20 text-[#3d251a] transition-all text-xs"
                                         value={room.count}
                                         onChange={(e) => updateRoomType(room.id, { count: parseFloat(e.target.value) || 0 })}
                                     />
@@ -184,7 +184,7 @@ export const Screen4_RentRoll: React.FC = () => {
                                 <td className="px-4 py-2.5 text-center">
                                     <input
                                         type="number"
-                                        className="w-16 bg-white border border-slate-200 rounded-md px-2 py-1 text-right focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 text-slate-700 transition-all text-xs"
+                                        className="w-16 bg-white border border-[#ebd9c5] rounded-md px-2 py-1 text-right focus:border-[#a87c28] focus:outline-none focus:ring-1 focus:ring-[#a87c28]/20 text-[#3d251a] transition-all text-xs"
                                         value={room.areaM2}
                                         onChange={(e) => updateRoomType(room.id, { areaM2: parseFloat(e.target.value) || 0 })}
                                     />
@@ -192,22 +192,22 @@ export const Screen4_RentRoll: React.FC = () => {
                                 <td className="px-4 py-2.5 text-center">
                                     <input
                                         type="number"
-                                        className="w-24 bg-white border border-slate-200 rounded-md px-2 py-1 text-right focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 text-slate-700 font-mono transition-all text-xs font-semibold"
+                                        className="w-24 bg-white border border-[#ebd9c5] rounded-md px-2 py-1 text-right focus:border-[#a87c28] focus:outline-none focus:ring-1 focus:ring-[#a87c28]/20 text-[#3d251a] font-mono transition-all text-xs font-semibold"
                                         value={room.rent === 0 ? '' : room.rent}
                                         onChange={(e) => updateRoomType(room.id, { rent: parseFloat(e.target.value) || 0 })}
                                     />
-                                    <div className="text-[9px] text-slate-400 font-mono text-right mt-0.5 tracking-tight">
+                                    <div className="text-[9px] text-[#8c6114]/70 font-mono text-right mt-0.5 tracking-tight">
                                         {room.rent > 0 ? `¥${room.rent.toLocaleString()}` : '—'}
                                     </div>
                                 </td>
                                 <td className="px-4 py-2.5 text-center">
                                     <input
                                         type="number"
-                                        className="w-20 bg-white border border-slate-200 rounded-md px-2 py-1 text-right focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 text-slate-700 font-mono transition-all text-xs font-semibold"
+                                        className="w-20 bg-white border border-[#ebd9c5] rounded-md px-2 py-1 text-right focus:border-[#a87c28] focus:outline-none focus:ring-1 focus:ring-[#a87c28]/20 text-[#3d251a] font-mono transition-all text-xs font-semibold"
                                         value={room.commonFee === 0 ? '' : room.commonFee}
                                         onChange={(e) => updateRoomType(room.id, { commonFee: parseFloat(e.target.value) || 0 })}
                                     />
-                                    <div className="text-[9px] text-slate-400 font-mono text-right mt-0.5 tracking-tight">
+                                    <div className="text-[9px] text-[#8c6114]/70 font-mono text-right mt-0.5 tracking-tight">
                                         {room.commonFee > 0 ? `¥${room.commonFee.toLocaleString()}` : '—'}
                                     </div>
                                 </td>
@@ -216,7 +216,7 @@ export const Screen4_RentRoll: React.FC = () => {
                                         <td className="px-4 py-2.5 text-center">
                                             <input
                                                 type="number"
-                                                className="w-16 bg-white border border-slate-200 rounded-md px-2 py-1 text-right focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 text-slate-700 transition-all"
+                                                className="w-16 bg-white border border-[#ebd9c5] rounded-md px-2 py-1 text-right focus:border-[#a87c28] focus:outline-none focus:ring-1 focus:ring-[#a87c28]/20 text-[#3d251a] transition-all text-[#3d251a] text-xs"
                                                 value={room.cooperationMonths ?? 0}
                                                 onChange={(e) => updateRoomType(room.id, { cooperationMonths: parseFloat(e.target.value) || 0 })}
                                             />
@@ -224,21 +224,21 @@ export const Screen4_RentRoll: React.FC = () => {
                                         <td className="px-4 py-2.5 text-center">
                                             <input
                                                 type="number"
-                                                className="w-16 bg-white border border-slate-200 rounded-md px-2 py-1 text-right focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 text-slate-700 transition-all"
+                                                className="w-16 bg-white border border-[#ebd9c5] rounded-md px-2 py-1 text-right focus:border-[#a87c28] focus:outline-none focus:ring-1 focus:ring-[#a87c28]/20 text-[#3d251a] transition-all text-[#3d251a] text-xs"
                                                 value={room.cooperationReturnYears ?? 0}
                                                 onChange={(e) => updateRoomType(room.id, { cooperationReturnYears: parseFloat(e.target.value) || 0 })}
                                             />
                                         </td>
-                                        <td className="px-4 py-2.5 text-right text-slate-600 font-mono font-medium text-xs">
+                                        <td className="px-4 py-2.5 text-right text-[#3d251a] font-mono font-medium text-xs">
                                             {((room.rent * room.count * (room.cooperationMonths ?? 0))).toLocaleString()}
                                         </td>
                                     </>
                                 )}
-                                <td className="px-4 py-2.5 font-bold text-right text-slate-700 font-mono text-xs">
+                                <td className="px-4 py-2.5 font-bold text-right text-[#3d251a] font-mono text-xs">
                                     {((room.rent + room.commonFee) * room.count).toLocaleString()}
                                 </td>
                                 <td className="px-4 py-2.5 text-center">
-                                    <button onClick={() => removeRoomType(room.id)} className="text-slate-300 hover:text-red-500 transition-colors p-1 rounded-md hover:bg-red-50">
+                                    <button onClick={() => removeRoomType(room.id)} className="text-slate-300 hover:text-red-500 transition-colors p-1 rounded-md hover:bg-rose-50">
                                         <Trash2 className="h-4 w-4" />
                                     </button>
                                 </td>
@@ -253,40 +253,40 @@ export const Screen4_RentRoll: React.FC = () => {
     return (
         <div className="max-w-4xl mx-auto space-y-8 animate-in pb-20">
             <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-slate-800">収支条件設定 (Rent Roll & Expenses)</h2>
+                <h2 className="text-2xl font-bold text-[#23150d]">収支条件設定 (Rent Roll & Expenses)</h2>
             </div>
 
             <div className="grid gap-6">
-                <Card title="賃賃条件 (Rent Roll)">
+                <Card title="賃貸条件 (Rent Roll)">
                     <div className="space-y-6">
                         {/* 住居系アパートメントセクション */}
                         <div className="space-y-3">
-                            <h4 className="text-sm font-bold text-slate-700 flex items-center gap-1.5 bg-slate-50 px-3 py-2 rounded-xl">
+                            <h4 className="text-sm font-bold text-[#23150d] flex items-center gap-1.5 bg-[#fcf9f2] border border-[#ebd9c5] px-3 py-2 rounded-xl">
                                 <span>🏠</span> 住居系アパートメント
                             </h4>
                             {renderRoomTable(residentialRooms, '住居系')}
                         </div>
 
                         {/* 店舗・テナント用セクション */}
-                        <div className="space-y-3 pt-4 border-t border-slate-100">
-                            <h4 className="text-sm font-bold text-slate-700 flex items-center gap-1.5 bg-slate-50 px-3 py-2 rounded-xl">
+                        <div className="space-y-3 pt-4 border-t border-[#ebd9c5]/50">
+                            <h4 className="text-sm font-bold text-[#23150d] flex items-center gap-1.5 bg-[#fcf9f2] border border-[#ebd9c5] px-3 py-2 rounded-xl">
                                 <span>🏬</span> 店舗・テナント用
                             </h4>
                             {renderRoomTable(commercialRooms, '店舗・テナント用')}
                         </div>
                     </div>
 
-                    {/* 用途別の新規追加ボタンを横並びで配置し、マテリアル感溢れるデザインに */}
-                    <div className="flex flex-col sm:flex-row gap-4 mt-6 pt-4 border-t border-slate-100">
-                        <Button variant="secondary" onClick={() => addRoomTypeWithUsage('residential')} className="flex-1 flex items-center justify-center gap-2 border-dashed border-2 border-slate-300 bg-transparent hover:bg-slate-50 hover:border-slate-400 py-2.5">
+                    {/* 用途別の新規追加ボタン */}
+                    <div className="flex flex-col sm:flex-row gap-4 mt-6 pt-4 border-t border-[#ebd9c5]/50">
+                        <Button variant="secondary" onClick={() => addRoomTypeWithUsage('residential')} className="flex-1 flex items-center justify-center gap-2 border-dashed border-2 border-[#d4af37]/45 bg-transparent hover:bg-[#ebd9c5]/25 text-[#a87c28] hover:border-[#a87c28] py-2.5">
                             <Plus className="h-4 w-4" /> 🏠 住居タイプを追加
                         </Button>
-                        <Button variant="secondary" onClick={() => addRoomTypeWithUsage('commercial')} className="flex-1 flex items-center justify-center gap-2 border-dashed border-2 border-slate-300 bg-transparent hover:bg-slate-50 hover:border-slate-400 py-2.5">
+                        <Button variant="secondary" onClick={() => addRoomTypeWithUsage('commercial')} className="flex-1 flex items-center justify-center gap-2 border-dashed border-2 border-[#d4af37]/45 bg-transparent hover:bg-[#ebd9c5]/25 text-[#a87c28] hover:border-[#a87c28] py-2.5">
                             <Plus className="h-4 w-4" /> 🏬 店舗タイプを追加
                         </Button>
                     </div>
 
-                    <div className="grid md:grid-cols-4 gap-6 mt-6 pt-6 border-t border-slate-100">
+                    <div className="grid md:grid-cols-4 gap-6 mt-6 pt-6 border-t border-[#ebd9c5]/50">
                         <InputGroup
                             label="駐車場台数"
                             type="number"
@@ -354,9 +354,9 @@ export const Screen4_RentRoll: React.FC = () => {
                 <Card title="運営経費 (Expenses)">
                     <div className="grid md:grid-cols-3 gap-6 mb-6">
                         <div className="space-y-1.5">
-                            <label className="text-sm font-semibold text-slate-600">管理費方式</label>
+                            <label className="text-sm font-semibold text-[#3d251a]">管理費方式</label>
                             <select
-                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                className="w-full rounded-lg border border-[#ebd9c5] bg-white px-3 py-2.5 text-[#3d251a] focus:border-[#a87c28] focus:outline-none focus:ring-2 focus:ring-[#a87c28]/20 transition-all font-semibold text-sm"
                                 value={data.expenses.managementFeeMode}
                                 onChange={(e) => updateExpenses({ managementFeeMode: e.target.value as any })}
                             >
@@ -408,7 +408,7 @@ export const Screen4_RentRoll: React.FC = () => {
                         />
                     </div>
 
-                    <div className="grid md:grid-cols-4 gap-6 mt-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <div className="grid md:grid-cols-4 gap-6 mt-6 bg-[#fcf9f2] p-4 rounded-xl border border-[#ebd9c5] shadow-sm">
                         <InputGroup
                             label="固都税(土地・年額)"
                             type="number"
@@ -428,40 +428,40 @@ export const Screen4_RentRoll: React.FC = () => {
                 </Card>
 
                 <div className="grid gap-6 md:grid-cols-2">
-                    <div className="bg-indigo-600 text-white p-6 rounded-2xl shadow-lg">
-                        <span className="text-indigo-100 text-sm uppercase tracking-wider font-bold">年間満室想定収入 (Gross Potential Income)</span>
-                        <div className="text-3xl font-bold mt-1">{(annualPotentialGrossIncome / 10000).toLocaleString(undefined, { maximumFractionDigits: 1 })} 万円</div>
-                        <p className="text-sm text-indigo-200 mt-2">
+                    <div className="bg-gradient-to-r from-[#aa7c11] to-[#8a5d3b] text-[#fdfaf5] p-6 rounded-2xl shadow-lg border border-[#ebd9c5]/20">
+                        <span className="text-[#fdfaf5]/90 text-sm uppercase tracking-wider font-semibold">年間満室想定収入 (Gross Potential Income)</span>
+                        <div className="text-3xl font-bold font-serif mt-1">{(annualPotentialGrossIncome / 10000).toLocaleString(undefined, { maximumFractionDigits: 1 })} 万円</div>
+                        <p className="text-xs text-[#fdfaf5]/80 mt-2 font-medium">
                             月額: {(grossMonthlyIncome + data.rentRoll.otherRevenue + (data.rentRoll.solarPowerIncome || 0)).toLocaleString()} 円 × 12ヶ月
                         </p>
                     </div>
 
                     {data.mode === 'land_lease' ? (
-                        <div className="bg-gradient-to-br from-emerald-600 to-teal-700 text-white p-6 rounded-2xl shadow-xl space-y-4">
+                        <div className="bg-gradient-to-br from-[#1e3d2f] to-[#12261d] text-[#fdfaf5] p-6 rounded-2xl shadow-xl border border-[#ebd9c5]/20 space-y-4">
                             <div>
-                                <span className="text-emerald-100 text-xs uppercase tracking-wider font-bold">建設協力金 調達総額</span>
+                                <span className="text-[#ebd9c5] text-xs uppercase tracking-wider font-semibold">建設協力金 調達総額</span>
                                 <div className="text-4xl font-extrabold mt-1 font-mono">{formatManYen(totalCooperationMoney / 10000)} 万円</div>
                             </div>
                             <div className="space-y-1">
-                                <div className="flex justify-between text-xs text-emerald-100">
+                                <div className="flex justify-between text-xs text-[#ebd9c5]/90">
                                     <span>建物本体工事費（{formatManYen(data.budget.buildingWorksCost)}万円）に対する補填率</span>
                                     <span className="font-bold">{(data.budget.buildingWorksCost > 0 ? (totalCooperationMoney / (data.budget.buildingWorksCost * 10000) * 100) : 0).toFixed(1)}%</span>
                                 </div>
-                                <div className="w-full bg-emerald-800/60 rounded-full h-2 overflow-hidden">
+                                <div className="w-full bg-[#12261d]/60 rounded-full h-2 overflow-hidden border border-[#ebd9c5]/10">
                                     <div 
-                                        className="bg-emerald-300 h-full rounded-full transition-all duration-500 ease-out"
+                                        className="bg-[#ebd9c5] h-full rounded-full transition-all duration-500 ease-out"
                                         style={{ width: `${Math.min(100, data.budget.buildingWorksCost > 0 ? (totalCooperationMoney / (data.budget.buildingWorksCost * 10000) * 100) : 0)}%` }}
                                     />
                                 </div>
                             </div>
-                            <p className="text-xs text-emerald-100 leading-relaxed bg-emerald-800/20 p-2.5 rounded-lg">
+                            <p className="text-xs text-[#ebd9c5]/90 leading-relaxed bg-[#ebd9c5]/10 p-2.5 rounded-lg">
                                 💡 テナントから預かる建設協力金で、本体工事費の約 <span className="font-bold text-white">{(data.budget.buildingWorksCost > 0 ? (totalCooperationMoney / (data.budget.buildingWorksCost * 10000) * 100) : 0).toFixed(0)}%</span> を金利・返済負担なしで調達できています。
                             </p>
                         </div>
                     ) : (
-                        <div className="bg-gradient-to-br from-amber-600 to-orange-700 text-white p-6 rounded-2xl shadow-xl space-y-4">
+                        <div className="bg-gradient-to-br from-[#8c6114] to-[#5c3e0a] text-[#fdfaf5] p-6 rounded-2xl shadow-xl border border-[#ebd9c5]/35 space-y-4">
                             <div>
-                                <span className="text-amber-100 text-xs uppercase tracking-wider font-bold">想定表面利回り (Gross Yield)</span>
+                                <span className="text-[#ebd9c5] text-xs uppercase tracking-wider font-semibold">想定表面利回り (Gross Yield)</span>
                                 <div className="text-4xl font-extrabold mt-1 font-mono">
                                     {((data.budget.landPrice || 0) + (data.budget.buildingWorksCost || 0) > 0)
                                         ? (annualPotentialGrossIncome / (((data.budget.landPrice || 0) + (data.budget.buildingWorksCost || 0) + (data.budget.demolitionCost || 0) + (data.budget.otherInitialCost || 0)) * 10000) * 100).toFixed(2)
@@ -469,12 +469,12 @@ export const Screen4_RentRoll: React.FC = () => {
                                 </div>
                             </div>
                             <div className="space-y-1">
-                                <div className="flex justify-between text-xs text-amber-100">
+                                <div className="flex justify-between text-xs text-[#ebd9c5]/90">
                                     <span>総初期コストに対する満室時年間家賃の割合</span>
-                                    <span>総投資額: {(((data.budget.landPrice || 0) + (data.budget.buildingWorksCost || 0) + (data.budget.demolitionCost || 0) + (data.budget.otherInitialCost || 0))).toLocaleString()} 万円</span>
+                                    <span className="font-semibold">総投資額: {(((data.budget.landPrice || 0) + (data.budget.buildingWorksCost || 0) + (data.budget.demolitionCost || 0) + (data.budget.otherInitialCost || 0))).toLocaleString()} 万円</span>
                                 </div>
                             </div>
-                            <p className="text-xs text-amber-100 leading-relaxed bg-amber-800/20 p-2.5 rounded-lg">
+                            <p className="text-xs text-[#ebd9c5]/90 leading-relaxed bg-[#ebd9c5]/10 p-2.5 rounded-lg">
                                 💡 表面利回りは、年間家賃収入を「総事業費（土地代・工事費・諸経費）」で割った目安の指標です。実際の手残りを表すNOI利回りは、次の結果画面で詳しく分析します。
                             </p>
                         </div>
@@ -484,7 +484,7 @@ export const Screen4_RentRoll: React.FC = () => {
 
             {/* エラーメッセージの表示 */}
             {Object.keys(errors).length > 0 && (
-                <div className="px-4 py-3 bg-rose-50 border border-rose-200 rounded-lg text-sm text-rose-700 font-medium">
+                <div className="px-4 py-3 bg-rose-50 border border-rose-200 rounded-lg text-sm text-rose-700 font-semibold shadow-sm">
                     ⚠️ 入力内容に不足があります:
                     <ul className="list-disc pl-5 mt-1 space-y-1">
                         {Object.values(errors).map((err, i) => (
@@ -494,7 +494,7 @@ export const Screen4_RentRoll: React.FC = () => {
                 </div>
             )}
 
-            <div className="flex justify-between pt-6 border-t border-slate-200">
+            <div className="flex justify-between pt-6 border-t border-[#ebd9c5]">
                 <Button variant="ghost" onClick={prevStep} className="flex items-center gap-2">
                     <ArrowLeft className="h-4 w-4" /> 戻る
                 </Button>
