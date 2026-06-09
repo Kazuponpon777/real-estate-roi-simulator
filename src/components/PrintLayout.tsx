@@ -74,52 +74,72 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ children }) => {
                 }
 
                 @media print {
-                    /* Hide everything */
-                    body > * {
-                        display: none !important;
-                    }
-                    body > #root {
-                        display: block !important;
-                    }
-                    #root > * {
-                        display: none !important;
+                    /* 日本語コメント: 印刷時に一旦画面上のすべての要素を非可視（透明）にする */
+                    html, body, #root, #root * {
+                        visibility: hidden !important;
                     }
                     
-                    /* Show only report print area */
+                    /* 日本語コメント: 印刷対象のエリア（印刷専用エリアおよび印刷用プレビューオーバーレイ）と、その中にあるすべての子要素のみを可視化する */
+                    #report-print-area,
+                    #report-print-area *,
+                    #report-preview-overlay.printing,
+                    #report-preview-overlay.printing * {
+                        visibility: visible !important;
+                    }
+                    
+                    /* 日本語コメント: 印刷対象外（no-printクラス）の要素は完全に非表示（レイアウトからも消去）にする */
+                    .no-print,
+                    .no-print * {
+                        display: none !important;
+                        visibility: hidden !important;
+                    }
+
+                    /* 日本語コメント: 印刷専用エリアを用紙の左上に絶対配置する */
                     #report-print-area {
                         display: block !important;
+                        position: absolute !important;
+                        left: 0 !important;
+                        top: 0 !important;
+                        width: 297mm !important;
+                        height: auto !important;
                     }
                     
-                    /* Also allow overlay printing */
+                    /* 日本語コメント: 印刷用プレビューオーバーレイを用紙の左上に絶対配置し、背景や影などのプレビュー装飾をクリアする */
                     #report-preview-overlay.printing {
                         display: block !important;
-                        position: static !important;
+                        position: absolute !important;
+                        left: 0 !important;
+                        top: 0 !important;
+                        width: 297mm !important;
+                        height: auto !important;
                         background: none !important;
                         overflow: visible !important;
+                        box-shadow: none !important;
                     }
-                    #report-preview-overlay.printing .no-print {
-                        display: none !important;
-                    }
+                    
                     #report-preview-overlay.printing > div:last-of-type {
                         padding: 0 !important;
                         gap: 0 !important;
                     }
 
+                    /* 日本語コメント: A4横サイズ（横297mm×縦210mm）の印刷ページ設定 */
                     @page {
                         size: 297mm 210mm;
                         margin: 0;
                     }
+                    
                     html, body {
                         margin: 0 !important;
                         padding: 0 !important;
+                        background-color: white !important;
                     }
+                    
                     body {
                         -webkit-print-color-adjust: exact;
                         print-color-adjust: exact;
                     }
-                    .no-print {
-                        display: none !important;
-                    }
+                    
+                    /* 日本語コメント: 各レポートページの印刷設定（改ページ制御） */
                     .report-page {
                         width: 297mm !important;
                         height: 210mm !important;
@@ -130,7 +150,9 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ children }) => {
                         overflow: hidden !important;
                         box-shadow: none !important;
                         margin: 0 !important;
+                        background: white !important;
                     }
+                    
                     .report-page:last-child {
                         page-break-after: auto !important;
                     }
