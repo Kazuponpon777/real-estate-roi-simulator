@@ -21,7 +21,7 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ children }) => {
 
             {/* Full-screen Preview Overlay */}
             {showPreview && (
-                <div className="fixed inset-0 bg-slate-500/80 z-[9999] overflow-auto no-print" id="report-preview-overlay">
+                <div className="fixed inset-0 bg-slate-500/80 z-[9999] overflow-auto" id="report-preview-overlay">
                     {/* Top Bar */}
                     <div className="sticky top-0 z-50 bg-slate-900 text-white px-6 py-3 flex items-center justify-between shadow-xl no-print">
                         <span className="font-bold text-sm">プレビュー (A4横)</span>
@@ -92,6 +92,12 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ children }) => {
                     /* 日本語コメント: 印刷対象外（no-printクラス）の要素は完全に非表示（レイアウトからも消去）にする */
                     .no-print,
                     .no-print * {
+                        display: none !important;
+                        visibility: hidden !important;
+                    }
+                    
+                    /* 日本語コメント: プレビュー画面自体が印刷中でない（printingクラスを持たない）場合は非表示にする */
+                    #report-preview-overlay:not(.printing) {
                         display: none !important;
                         visibility: hidden !important;
                     }
