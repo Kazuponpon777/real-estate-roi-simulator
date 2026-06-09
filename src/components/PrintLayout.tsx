@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 interface PrintLayoutProps {
     children: React.ReactNode;
@@ -7,10 +8,26 @@ interface PrintLayoutProps {
 
 export const PrintLayout: React.FC<PrintLayoutProps> = ({ children }) => {
     const [showPreview, setShowPreview] = useState(false);
+    // 日本語コメント: body直下にポータル用のコンテナを作成・管理するためのState
+    const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(null);
+
+    // 日本語コメント: コンポーネントのマウント時に、body直下に印刷専用のコンテナ（div）を作成する
+    // これにより、#root の外側に印刷用エリアが配置され、#root を非表示にしてもレポートは影響を受けない
+    useEffect(() => {
+        const container = document.createElement('div');
+        container.id = 'report-print-portal';
+        document.body.appendChild(container);
+        setPortalContainer(container);
+
+        // 日本語コメント: コンポーネントのアンマウント時にコンテナを削除する
+        return () => {
+            document.body.removeChild(container);
+        };
+    }, []);
 
     return (
         <>
-            {/* Trigger Button */}
+            {/* 日本語コメント: PDFレポート作成ボタン（画面に常時表示、印刷時は非表示） */}
             <button
                 onClick={() => setShowPreview(true)}
                 className="no-print inline-flex items-center gap-2 px-6 py-3 bg-slate-900 text-white font-bold text-sm rounded-xl hover:bg-slate-800 transition-colors shadow-lg"
@@ -19,15 +36,18 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ children }) => {
                 PDFレポート作成
             </button>
 
-            {/* Full-screen Preview Overlay */}
+            {/* 日本語コメント: プレビュー画面（画面上でのみ表示。印刷時は非表示になる） */}
             {showPreview && (
-                <div className="fixed inset-0 bg-slate-500/80 z-[9999] overflow-auto" id="report-preview-overlay">
-                    {/* Top Bar */}
-                    <div className="sticky top-0 z-50 bg-slate-900 text-white px-6 py-3 flex items-center justify-between shadow-xl no-print">
+                <div className="fixed inset-0 bg-slate-500/80 z-[9999] overflow-auto no-print" id="report-preview-overlay">
+                    {/* 日本語コメント: 上部操作バー */}
+                    <div className="sticky top-0 z-50 bg-slate-900 text-white px-6 py-3 flex items-center justify-between shadow-xl">
                         <span className="font-bold text-sm">プレビュー (A4横)</span>
                         <div className="flex gap-3">
                             <button
                                 onClick={() => {
+                                    // 日本語コメント: 印刷ボタンを押すと、ブラウザの印刷ダイアログを開く
+                                    // 印刷用コンテンツは #root の外側（body直下のポータル）にあるため、
+                                    // CSSで #root を非表示にするだけでレポートだけが印刷される
                                     window.print();
                                 }}
                                 className="px-4 py-1.5 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-500 font-medium"
@@ -43,20 +63,25 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ children }) => {
                         </div>
                     </div>
 
-                    {/* Pages Container */}
+                    {/* 日本語コメント: プレビュー表示用のページコンテナ */}
                     <div className="flex flex-col items-center gap-8 py-8 px-4">
                         {children}
                     </div>
                 </div>
             )}
 
-            {/* Print-only: render pages directly */}
-            <div className="hidden" id="report-print-area">
-                {children}
-            </div>
+            {/* 日本語コメント: 印刷専用エリア（ReactポータルでBody直下に配置される）
+                画面上では非表示（display:none）、印刷時のみ表示（display:block）される。
+                #root の外側にあるため、#root を display:none にしても影響を受けない。 */}
+            {portalContainer && createPortal(
+                <div id="report-print-area">
+                    {children}
+                </div>,
+                portalContainer
+            )}
 
             <style>{`
-                /* Screen Preview: show pages as cards */
+                /* 日本語コメント: 画面プレビュー用：各ページをA4横サイズのカードとして表示 */
                 #report-preview-overlay .report-page {
                     width: 297mm;
                     height: 210mm;
@@ -68,56 +93,22 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ children }) => {
                     flex-shrink: 0;
                 }
 
-                @media print {
-                    /* 日本語コメント: プレビュー画面（#report-preview-overlay）が存在する場合にのみ、大元の入力画面等を隠してレポートだけを印刷するための設定 */
-                    body:has(#report-preview-overlay) #root {
-                        visibility: hidden !important;
-                    }
-                    
-                    body:has(#report-preview-overlay) #report-preview-overlay {
-                        visibility: visible !important;
-                        display: block !important;
-                        position: absolute !important;
-                        left: 0 !important;
-                        top: 0 !important;
-                        width: 297mm !important;
-                        height: auto !important;
-                        background: none !important;
-                        overflow: visible !important;
-                        box-shadow: none !important;
-                    }
-                    
-                    body:has(#report-preview-overlay) #report-preview-overlay * {
-                        visibility: visible !important;
-                    }
-                    
-                    /* 日本語コメント: プレビュー画面内の印刷不要な要素（上部操作バー等）は完全に非表示にする */
-                    body:has(#report-preview-overlay) .no-print,
-                    body:has(#report-preview-overlay) .no-print * {
-                        display: none !important;
-                        visibility: hidden !important;
-                    }
-                    
-                    body:has(#report-preview-overlay) #report-preview-overlay > div:last-of-type {
-                        padding: 0 !important;
-                        gap: 0 !important;
-                    }
+                /* 日本語コメント: 印刷専用エリアは画面上では完全に非表示にする */
+                #report-print-portal {
+                    display: none;
+                }
 
-                    /* 日本語コメント: プレビュー画面がない場合の、通常の印刷専用エリアの設定 */
-                    body:not(:has(#report-preview-overlay)) #root {
-                        visibility: hidden !important;
+                @media print {
+                    /* 日本語コメント: 印刷時は #root（アプリ全体）を完全に非表示にする。
+                       印刷用エリア（#report-print-portal）は #root の外側（body直下）にあるため、
+                       この指定の影響を一切受けない。これが根本的な解決策。 */
+                    #root {
+                        display: none !important;
                     }
-                    body:not(:has(#report-preview-overlay)) #report-print-area {
-                        visibility: visible !important;
+                    
+                    /* 日本語コメント: 印刷専用エリアを表示する */
+                    #report-print-portal {
                         display: block !important;
-                        position: absolute !important;
-                        left: 0 !important;
-                        top: 0 !important;
-                        width: 297mm !important;
-                        height: auto !important;
-                    }
-                    body:not(:has(#report-preview-overlay)) #report-print-area * {
-                        visibility: visible !important;
                     }
 
                     /* 日本語コメント: A4横サイズ（横297mm×縦210mm）の印刷ページ設定 */
