@@ -62,6 +62,7 @@ export interface PropertyDetails {
     buildingAreaM2: number; // 建築面積
     totalFloorAreaM2: number; // 延床面積
     floorAreas: number[]; // 各階面積
+    propertyType?: 'apartment' | 'store_apartment' | 'office_building' | 'other'; // 物件種別: アパート・賃貸マンション, 店舗マンション, 商業ビル, その他
 }
 
 export interface ProjectBudget {
@@ -116,6 +117,7 @@ export interface RoomType {
 
     // --- 用途の分別設定 ---
     usage?: 'residential' | 'commercial'; // 'residential': 住居系, 'commercial': 店舗用
+    depositMonths?: number; // 敷金 (ヶ月)
 }
 
 export interface RentRoll {
@@ -147,6 +149,8 @@ export interface Expenses {
 
     fireInsuranceAnnual: number; // If not prepaid
     otherExpenses: number; // Annual
+    landAssessedValue?: number; // 土地の固定資産税評価額 (万円)
+    buildingAssessedValue?: number; // 建物の固定資産税評価額 (万円)
 }
 
 export interface AdvancedSettings {
@@ -282,6 +286,7 @@ const INITIAL_DATA: SimulationData = {
         totalFloorAreaM2: 0,
         floorAreas: [0, 0, 0],
         documents: [],
+        propertyType: 'apartment',
     },
 
     budget: {
@@ -314,7 +319,7 @@ const INITIAL_DATA: SimulationData = {
 
     rentRoll: {
         roomTypes: [
-            { id: '1', name: '1K', count: 0, areaM2: 25, rent: 60000, commonFee: 5000, cooperationMonths: 120, cooperationReturnYears: 20, usage: 'residential' }
+            { id: '1', name: '1K', count: 0, areaM2: 25, rent: 60000, commonFee: 5000, depositMonths: 1, cooperationMonths: 120, cooperationReturnYears: 20, usage: 'residential' }
         ],
         parkingCount: 0,
         parkingFee: 0,
@@ -338,6 +343,8 @@ const INITIAL_DATA: SimulationData = {
         cityPlanningTaxBuilding: 0,
         fireInsuranceAnnual: 0,
         otherExpenses: 0,
+        landAssessedValue: 0,
+        buildingAssessedValue: 0,
     },
     advancedSettings: {
         rentDeclineRate: 1.0,

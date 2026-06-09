@@ -422,6 +422,20 @@ export const Screen1_Property: React.FC = () => {
 
                         <div className="grid md:grid-cols-2 gap-6">
                             <div className="space-y-1.5">
+                                <label className="text-sm font-bold text-[#23150d]/80">物件種別</label>
+                                <select
+                                    className="w-full rounded-lg border border-[#e8dcc4] bg-white px-3 py-2.5 text-[#23150d] focus:border-[#a87c28] focus:outline-none focus:ring-2 focus:ring-[#a87c28]/20"
+                                    value={data.property.propertyType || 'apartment'}
+                                    onChange={(e) => updateProperty({ propertyType: e.target.value as any })}
+                                >
+                                    <option value="apartment">アパート・賃貸マンション</option>
+                                    <option value="store_apartment">店舗マンション (店舗併用住宅)</option>
+                                    <option value="office_building">商業ビル・店舗・オフィス</option>
+                                    <option value="other">その他</option>
+                                </select>
+                            </div>
+
+                            <div className="space-y-1.5">
                                 <label className="text-sm font-bold text-[#23150d]/80">構造</label>
                                 <select
                                     className="w-full rounded-lg border border-[#e8dcc4] bg-white px-3 py-2.5 text-[#23150d] focus:border-[#a87c28] focus:outline-none focus:ring-2 focus:ring-[#a87c28]/20"

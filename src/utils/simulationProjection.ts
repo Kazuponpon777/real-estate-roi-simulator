@@ -62,10 +62,12 @@ export const calculateLongTermProjection = (data: SimulationData, years: number 
         });
     }
 
-    // 自己資金のマイナス
+    // 自己資金
     const ownCapitalYen = data.funding.ownCapital * 10000;
-    // [修正] QA部の指摘: 建設協力金は初期の建築資金に充当されるため、初期の手出し自己資金アウトフローを削減します
-    let currentAccumulatedCF = -ownCapitalYen + totalCooperationMoneyYen;
+    // 預り敷金
+    const securityDepositInYen = (data.funding.securityDepositIn || 0) * 10000;
+    // [修正] QA部の指摘: 建設協力金・預り敷金は初期の建築資金・手元資金に充当されるため、初期の手出し自己資金アウトフローを削減します
+    let currentAccumulatedCF = -ownCapitalYen + totalCooperationMoneyYen + securityDepositInYen;
 
     // --- 建物価格の決定 ---
     // 中古の場合は購入価格×建物割合、新築・借地リースの場合は本体工事費を使用
@@ -435,12 +437,15 @@ export const getInvestmentMetrics = (
         netSaleProceeds = exit.netSaleProceeds;
     }
 
-    // IRR用のキャッシュフロー配列: [-純自己資金, 1年目CF, 2年目CF, ..., (最終年CF + 売却手取り)]
-    // [修正] QA部の指摘: 借地リース時は建設協力金を初期資金に充当するため、初期アウトフローを 建設協力金分だけ削減します。
-    const initialOutflow = ownCapitalYen - totalCooperationMoneyYen;
+    // 預り敷金
+    const securityDepositInYen = (data.funding.securityDepositIn || 0) * 10000;
+    // IRR用のキャッシュフロー配列: [-純自己資金, 1年目CF, 2年目CF, ..., (最終年CF + 売却手取り - 預り敷金返還)]
+    // 建設協力金・預り敷金分だけ初期のアウトフローが減少する
+    const initialOutflow = ownCapitalYen - totalCooperationMoneyYen - securityDepositInYen;
     const irrCashflows = [-initialOutflow, ...projection.map(p => p.atcf)];
     if (irrCashflows.length > 1 && netSaleProceeds > 0) {
-        irrCashflows[irrCashflows.length - 1] += netSaleProceeds;
+        // 売却手取りを加算し、テナントに返還する預り敷金を差し引く
+        irrCashflows[irrCashflows.length - 1] += (netSaleProceeds - securityDepositInYen);
     }
     const irr = calculateIRR(irrCashflows);
 

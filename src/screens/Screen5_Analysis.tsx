@@ -16,7 +16,7 @@ import { calculatePmt } from '../utils/calculations';
 import { formatCurrency, formatPercent } from '../utils/formatters';
 import { downloadCSV } from '../utils/csvExport';
 import { saveProjectJSON, loadProjectJSON, importCSV } from '../utils/fileHandler';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ComposedChart, Line, AreaChart, Area, Legend, ReferenceLine } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ComposedChart, Line, Area, Legend, ReferenceLine } from 'recharts';
 import { calculateLongTermProjection, getInvestmentMetrics } from '../utils/simulationProjection';
 import { Slider } from '../components/ui/Slider';
 import { PrintLayout } from '../components/PrintLayout';
@@ -721,38 +721,82 @@ export const Screen5_Analysis: React.FC = () => {
                     </div>
                 </Card>
  
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Chart 2: Accumulated CF */}
-                    <Card title="累積キャッシュフロー推移" className="bg-white">
-                        <div className="h-64 w-full">
+                <div className="grid grid-cols-1 gap-6">
+                    {/* Chart 2: 投資回収・損益分岐複合チャート */}
+                    <Card title="投資回収・損益分岐チャート (累積CF vs ローン残債)" className="bg-white w-full">
+                        <div className="flex flex-wrap justify-between items-center mb-4 gap-2 text-xs font-semibold text-[#8c6114] bg-[#fdf5e2] p-3 rounded-xl border border-[#ebd9c5]">
+                            <span>
+                                📈 損益分岐点 (自己資金の投資回収年数): 
+                                <span className="text-emerald-700 text-sm font-extrabold ml-1">
+                                    {investmentMetrics.paybackYear ? `${investmentMetrics.paybackYear}年目` : '35年超'}
+                                </span>
+                            </span>
+                            <span>
+                                🏦 借入金完済予定年: 
+                                <span className="text-blue-800 text-sm font-extrabold ml-1">
+                                    {Math.max(...data.funding.loans.map(l => l.duration), 0)}年目
+                                </span>
+                            </span>
+                        </div>
+                        <div className="h-80 w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={projectionData} margin={{ top: 10, right: 30, left: 60, bottom: 0 }}>
+                                <ComposedChart data={projectionData} margin={{ top: 10, right: 30, left: 60, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                    <XAxis dataKey="year" />
-                                    <YAxis tickFormatter={(val) => `${val / 10000}万`} />
+                                    <XAxis dataKey="year" label={{ value: '年数', position: 'insideBottomRight', offset: -5 }} />
+                                    <YAxis tickFormatter={(val) => `${val / 10000}万`} width={80} />
                                     <Tooltip formatter={(value: number | undefined) => formatCurrency(value || 0)} />
-                                    <ReferenceLine y={0} stroke="#ebd9c5" />
-                                    <Area type="monotone" dataKey="accumulatedCashFlow" name="累積CF" stroke="#a87c28" fill="#ebd9c5" fillOpacity={0.4} />
-                                </AreaChart>
+                                    <Legend />
+                                    <ReferenceLine y={0} stroke="#cbd5e1" strokeWidth={1.5} />
+                                    <Area type="monotone" dataKey="loanBalance" name="ローン残高" stroke="#8c6114" fill="#ebd9c5" fillOpacity={0.3} />
+                                    <Line type="monotone" dataKey="accumulatedCashFlow" name="累積キャッシュフロー" stroke="#1e3d2f" strokeWidth={3.5} dot={{ r: 2 }} />
+                                </ComposedChart>
                             </ResponsiveContainer>
                         </div>
                     </Card>
  
-                    {/* Chart 3: Loan Balance */}
-                    <Card title="ローン残債推移" className="bg-white">
-                        <div className="h-64 w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={projectionData} margin={{ top: 10, right: 30, left: 60, bottom: 0 }}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                    <XAxis dataKey="year" />
-                                    <YAxis tickFormatter={(val) => `${val / 10000}万`} />
-                                    <Tooltip formatter={(value: number | undefined) => formatCurrency(value || 0)} />
-                                    <Area type="monotone" dataKey="loanBalance" name="ローン残債" stroke="#8c6114" fill="#ebd9c5" fillOpacity={0.4} />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </Card>
                 </div>
+
+                {/* 35年間 資金収支詳細テーブル (画面用) */}
+                <Card title="35年間 資金収支詳細テーブル" className="bg-white">
+                    <p className="text-xs text-[#8c6c59] mb-3 font-medium">※ 横スクロールで全35年分の詳細な資金推移（年間収支・累計収支・ローン残高）を確認できます。</p>
+                    <div className="overflow-x-auto rounded-xl border border-[#ebd9c5]/60 shadow-sm max-h-96">
+                        <table className="w-full text-xs text-right border-collapse" style={{ minWidth: '1000px' }}>
+                            <thead className="bg-[#fcf9f2] text-[#3d251a] font-bold text-xs border-b border-[#ebd9c5] sticky top-0 z-10 shadow-sm">
+                                <tr>
+                                    <th className="py-2.5 px-3 text-center border-r border-[#ebd9c5] w-12 bg-[#fcf9f2]">年</th>
+                                    <th className="py-2.5 px-3 border-r border-[#ebd9c5] bg-[#fcf9f2]">実効総収入 (EGI)</th>
+                                    <th className="py-2.5 px-3 border-r border-[#ebd9c5] bg-[#fcf9f2]">運営費 (OPEX)</th>
+                                    <th className="py-2.5 px-3 border-r border-[#ebd9c5] bg-[#fcf9f2]">営業純利益 (NOI)</th>
+                                    <th className="py-2.5 px-3 border-r border-[#ebd9c5] bg-[#fcf9f2]">ローン返済 (ADS)</th>
+                                    <th className="py-2.5 px-3 border-r border-[#ebd9c5] bg-[#fcf9f2]">税引前CF (BTCF)</th>
+                                    <th className="py-2.5 px-3 border-r border-[#ebd9c5] bg-[#fcf9f2]">所得税額 (Tax)</th>
+                                    <th className="py-2.5 px-3 border-r border-[#ebd9c5] bg-emerald-50 text-emerald-800 font-extrabold">年間収支 (ATCF)</th>
+                                    <th className="py-2.5 px-3 border-r border-[#ebd9c5] bg-amber-50 text-[#8c6114] font-extrabold">累積収支 (CF)</th>
+                                    <th className="py-2.5 px-3 text-[#3d251a] font-extrabold bg-[#fcf9f2]">ローン残高</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[#ebd9c5]/30">
+                                {projectionData.map((row, i) => {
+                                    const isHighlight = row.year % 5 === 0;
+                                    return (
+                                        <tr key={row.year} className={`font-mono transition-colors hover:bg-[#ebd9c5]/5 ${i % 2 !== 0 ? 'bg-[#ebd9c5]/5' : 'bg-white'} ${isHighlight ? '!bg-[#ebd9c5]/15 font-bold' : ''}`}>
+                                            <td className="py-2 px-3 text-center text-[#8c6114] border-r border-[#ebd9c5]/30 font-bold">{row.year}年</td>
+                                            <td className="py-2 px-3 border-r border-[#ebd9c5]/30 text-slate-600">{formatCurrency(row.effectiveIncome)}</td>
+                                            <td className="py-2 px-3 border-r border-[#ebd9c5]/30 text-slate-600">{formatCurrency(row.opex)}</td>
+                                            <td className="py-2 px-3 border-r border-[#ebd9c5]/30 text-blue-800 font-semibold">{formatCurrency(row.noi)}</td>
+                                            <td className="py-2 px-3 border-r border-[#ebd9c5]/30 text-violet-600">{formatCurrency(row.tmT)}</td>
+                                            <td className="py-2 px-3 border-r border-[#ebd9c5]/30 text-slate-700">{formatCurrency(row.btcf)}</td>
+                                            <td className="py-2 px-3 border-r border-[#ebd9c5]/30 text-rose-600">{formatCurrency(row.taxAmount)}</td>
+                                            <td className="py-2 px-3 border-r border-[#ebd9c5]/30 font-bold text-emerald-700 bg-emerald-50/20">{formatCurrency(row.atcf)}</td>
+                                            <td className={`py-2 px-3 border-r border-[#ebd9c5]/30 font-bold bg-amber-50/20 ${row.accumulatedCashFlow >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>{formatCurrency(row.accumulatedCashFlow)}</td>
+                                            <td className="py-2 px-3 text-[#5c3e0a] font-semibold">{formatCurrency(row.loanBalance)}</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </Card>
             </div>
 
             {/* Exit Strategy Section */}

@@ -19,10 +19,77 @@ import { formatManYen } from '../utils/formatters';
 import { validateRentRoll, type ValidationErrors } from '../utils/validation';
 
 export const Screen4_RentRoll: React.FC = () => {
-    const { data, updateRentRoll, updateExpenses, nextStep, prevStep } = useSimulationStore();
+    const { data, updateRentRoll, updateExpenses, updateFunding, nextStep, prevStep } = useSimulationStore();
 
     // ローカルのエラー状態を定義
     const [errors, setErrors] = React.useState<ValidationErrors>({});
+
+    // 敷金(預り)の自動同期 (賃料 × 戸数 × 各部屋の敷金ヶ月数 を合計し、funding.securityDepositIn に自動同期)
+    React.useEffect(() => {
+        const totalDeposit = data.rentRoll.roomTypes.reduce((acc, r) => {
+            const depMonths = r.depositMonths !== undefined ? r.depositMonths : data.rentRoll.securityDepositMonth;
+            return acc + (r.rent * r.count * depMonths);
+        }, 0);
+        
+        const totalDepositManYen = Math.round(totalDeposit / 10000);
+        if (data.funding.securityDepositIn !== totalDepositManYen) {
+            updateFunding({ securityDepositIn: totalDepositManYen });
+        }
+    }, [data.rentRoll.roomTypes, data.rentRoll.securityDepositMonth, data.funding.securityDepositIn]);
+
+    // 物件種別の変更に伴う固都税の自動再計算
+    React.useEffect(() => {
+        if (data.expenses.landAssessedValue) {
+            const propType = data.property.propertyType || 'apartment';
+            const isResidential = propType === 'apartment' || propType === 'store_apartment';
+            const valueYen = data.expenses.landAssessedValue * 10000;
+            let taxLand = 0;
+            let cityTaxLand = 0;
+
+            if (isResidential) {
+                taxLand = Math.round(valueYen * 0.014 * (1 / 6));
+                cityTaxLand = Math.round(valueYen * 0.003 * (1 / 3));
+            } else {
+                taxLand = Math.round(valueYen * 0.014);
+                cityTaxLand = Math.round(valueYen * 0.003);
+            }
+            updateExpenses({
+                fixedAssetTaxLand: taxLand + cityTaxLand
+            });
+        }
+    }, [data.property.propertyType]);
+
+    // 固定資産税評価額の変更ハンドラ
+    const handleAssessedValueChange = (type: 'land' | 'building', value: number) => {
+        const propType = data.property.propertyType || 'apartment';
+        const isResidential = propType === 'apartment' || propType === 'store_apartment';
+
+        if (type === 'land') {
+            const valueYen = value * 10000;
+            let taxLand = 0;
+            let cityTaxLand = 0;
+
+            if (isResidential) {
+                taxLand = Math.round(valueYen * 0.014 * (1 / 6));
+                cityTaxLand = Math.round(valueYen * 0.003 * (1 / 3));
+            } else {
+                taxLand = Math.round(valueYen * 0.014);
+                cityTaxLand = Math.round(valueYen * 0.003);
+            }
+            updateExpenses({
+                landAssessedValue: value,
+                fixedAssetTaxLand: taxLand + cityTaxLand
+            });
+        } else {
+            const valueYen = value * 10000;
+            const taxBuilding = Math.round(valueYen * 0.014);
+            const cityTaxBuilding = Math.round(valueYen * 0.003);
+            updateExpenses({
+                buildingAssessedValue: value,
+                fixedAssetTaxBuilding: taxBuilding + cityTaxBuilding
+            });
+        }
+    };
 
     // バリデーションチェックを実行して次へ進む
     const handleNext = () => {
@@ -97,24 +164,20 @@ export const Screen4_RentRoll: React.FC = () => {
 
         return (
             <div className="overflow-x-auto rounded-xl border border-[#ebd9c5]/60 shadow-sm bg-white">
-                {/* 借地リース時は列数が多いため最小幅を1150pxに広げ、入力欄が絶対に潰れないようにバランスを調整 */}
-                <table className="w-full text-sm text-left border-collapse" style={{ minWidth: data.mode === 'land_lease' ? '1150px' : '850px' }}>
+                {/* 常に建設協力金や敷金などを表示するため、最小幅を1150pxに調整 */}
+                <table className="w-full text-sm text-left border-collapse" style={{ minWidth: '1150px' }}>
                     <thead className="bg-[#fcf9f2] text-[#3d251a] uppercase font-bold text-xs border-b border-[#ebd9c5]">
                         <tr>
-                            <th className="px-4 py-3.5 w-28 rounded-l-lg">用途</th>
-                            <th className="px-4 py-3.5 w-48">間取り・名称</th>
-                            <th className="px-4 py-3.5 w-20 text-center">戸数</th>
-                            <th className="px-4 py-3.5 w-24 text-center">面積(㎡)</th>
-                            <th className="px-4 py-3.5 w-28 text-center">賃料(円)</th>
-                            <th className="px-4 py-3.5 w-24 text-center">共益費(円)</th>
-                            {data.mode === 'land_lease' && (
-                                <>
-                                    <th className="px-4 py-3.5 w-24 text-right">協力金(ヶ月)</th>
-                                    <th className="px-4 py-3.5 w-24 text-right">返還期間(年)</th>
-                                    <th className="px-4 py-3.5 w-32 text-right">協力金総額(円)</th>
-                                </>
-                            )}
-                            <th className="px-4 py-3.5 w-28 text-right">小計(円)</th>
+                            <th className="px-4 py-3.5 w-24 rounded-l-lg">用途</th>
+                            <th className="px-4 py-3.5 w-36">間取り・名称</th>
+                            <th className="px-4 py-3.5 w-16 text-center">戸数</th>
+                            <th className="px-4 py-3.5 w-20 text-center">面積(㎡)</th>
+                            <th className="px-4 py-3.5 w-24 text-center">賃料(円)</th>
+                            <th className="px-4 py-3.5 w-20 text-center">共益費(円)</th>
+                            <th className="px-4 py-3.5 w-20 text-center">敷金(ヶ月)</th>
+                            <th className="px-4 py-3.5 w-20 text-center">協力金(月)</th>
+                            <th className="px-4 py-3.5 w-20 text-center">返還(年)</th>
+                            <th className="px-4 py-3.5 w-24 text-right">小計(円)</th>
                             <th className="px-4 py-3.5 rounded-r-lg w-10 text-center"></th>
                         </tr>
                     </thead>
@@ -188,6 +251,9 @@ export const Screen4_RentRoll: React.FC = () => {
                                         value={room.areaM2}
                                         onChange={(e) => updateRoomType(room.id, { areaM2: parseFloat(e.target.value) || 0 })}
                                     />
+                                    <div className="text-[9px] text-[#8c6c59] text-right mt-0.5 tracking-tight font-mono">
+                                        {room.areaM2 > 0 ? `${(room.areaM2 / 3.30579).toFixed(2)}坪` : '—'}
+                                    </div>
                                 </td>
                                 <td className="px-4 py-2.5 text-center">
                                     <input
@@ -198,6 +264,7 @@ export const Screen4_RentRoll: React.FC = () => {
                                     />
                                     <div className="text-[9px] text-[#8c6114]/70 font-mono text-right mt-0.5 tracking-tight">
                                         {room.rent > 0 ? `¥${room.rent.toLocaleString()}` : '—'}
+                                        {room.rent > 0 && room.areaM2 > 0 && ` (坪¥${Math.round(room.rent / (room.areaM2 / 3.30579)).toLocaleString()})`}
                                     </div>
                                 </td>
                                 <td className="px-4 py-2.5 text-center">
@@ -211,29 +278,30 @@ export const Screen4_RentRoll: React.FC = () => {
                                         {room.commonFee > 0 ? `¥${room.commonFee.toLocaleString()}` : '—'}
                                     </div>
                                 </td>
-                                {data.mode === 'land_lease' && (
-                                    <>
-                                        <td className="px-4 py-2.5 text-center">
-                                            <input
-                                                type="number"
-                                                className="w-16 bg-white border border-[#ebd9c5] rounded-md px-2 py-1 text-right focus:border-[#a87c28] focus:outline-none focus:ring-1 focus:ring-[#a87c28]/20 text-[#3d251a] transition-all text-[#3d251a] text-xs"
-                                                value={room.cooperationMonths ?? 0}
-                                                onChange={(e) => updateRoomType(room.id, { cooperationMonths: parseFloat(e.target.value) || 0 })}
-                                            />
-                                        </td>
-                                        <td className="px-4 py-2.5 text-center">
-                                            <input
-                                                type="number"
-                                                className="w-16 bg-white border border-[#ebd9c5] rounded-md px-2 py-1 text-right focus:border-[#a87c28] focus:outline-none focus:ring-1 focus:ring-[#a87c28]/20 text-[#3d251a] transition-all text-[#3d251a] text-xs"
-                                                value={room.cooperationReturnYears ?? 0}
-                                                onChange={(e) => updateRoomType(room.id, { cooperationReturnYears: parseFloat(e.target.value) || 0 })}
-                                            />
-                                        </td>
-                                        <td className="px-4 py-2.5 text-right text-[#3d251a] font-mono font-medium text-xs">
-                                            {((room.rent * room.count * (room.cooperationMonths ?? 0))).toLocaleString()}
-                                        </td>
-                                    </>
-                                )}
+                                <td className="px-4 py-2.5 text-center">
+                                    <input
+                                        type="number"
+                                        className="w-16 bg-white border border-[#ebd9c5] rounded-md px-2 py-1 text-right focus:border-[#a87c28] focus:outline-none focus:ring-1 focus:ring-[#a87c28]/20 text-[#3d251a] transition-all text-xs"
+                                        value={room.depositMonths !== undefined ? room.depositMonths : (data.rentRoll.securityDepositMonth ?? 1)}
+                                        onChange={(e) => updateRoomType(room.id, { depositMonths: parseFloat(e.target.value) || 0 })}
+                                    />
+                                </td>
+                                <td className="px-4 py-2.5 text-center">
+                                    <input
+                                        type="number"
+                                        className="w-16 bg-white border border-[#ebd9c5] rounded-md px-2 py-1 text-right focus:border-[#a87c28] focus:outline-none focus:ring-1 focus:ring-[#a87c28]/20 text-[#3d251a] transition-all text-xs"
+                                        value={room.cooperationMonths ?? 0}
+                                        onChange={(e) => updateRoomType(room.id, { cooperationMonths: parseFloat(e.target.value) || 0 })}
+                                    />
+                                </td>
+                                <td className="px-4 py-2.5 text-center">
+                                    <input
+                                        type="number"
+                                        className="w-16 bg-white border border-[#ebd9c5] rounded-md px-2 py-1 text-right focus:border-[#a87c28] focus:outline-none focus:ring-1 focus:ring-[#a87c28]/20 text-[#3d251a] transition-all text-xs"
+                                        value={room.cooperationReturnYears ?? 0}
+                                        onChange={(e) => updateRoomType(room.id, { cooperationReturnYears: parseFloat(e.target.value) || 0 })}
+                                    />
+                                </td>
                                 <td className="px-4 py-2.5 font-bold text-right text-[#3d251a] font-mono text-xs">
                                     {((room.rent + room.commonFee) * room.count).toLocaleString()}
                                 </td>
@@ -408,22 +476,57 @@ export const Screen4_RentRoll: React.FC = () => {
                         />
                     </div>
 
-                    <div className="grid md:grid-cols-4 gap-6 mt-6 bg-[#fcf9f2] p-4 rounded-xl border border-[#ebd9c5] shadow-sm">
-                        <InputGroup
-                            label="固都税(土地・年額)"
-                            type="number"
-                            unit="円"
-                            value={data.expenses.fixedAssetTaxLand || ''}
-                            onChange={(e) => updateExpenses({ fixedAssetTaxLand: parseFloat(e.target.value) })}
-                        />
-                        <InputGroup
-                            label="固都税(建物・年額)"
-                            type="number"
-                            unit="円"
-                            value={data.expenses.fixedAssetTaxBuilding || ''}
-                            onChange={(e) => updateExpenses({ fixedAssetTaxBuilding: parseFloat(e.target.value) })}
-                        />
-                        {/* 固都税の合計等は画面上で確認できれば親切 */}
+                    <div className="mt-6 bg-[#fcf9f2] p-5 rounded-xl border border-[#ebd9c5] shadow-sm space-y-4">
+                        <h4 className="text-sm font-bold text-[#23150d] border-b border-[#ebd9c5] pb-1.5 flex justify-between items-center">
+                            <span>🏢 固定資産税・都市計画税の自動計算 (評価額入力)</span>
+                            <span className="text-xs text-[#8c6114] font-medium bg-[#fcf5e3] px-2 py-0.5 rounded border border-[#ebd9c5]">
+                                物件種別: {data.property.propertyType === 'apartment' ? 'アパート・賃貸マンション' : 
+                                         data.property.propertyType === 'store_apartment' ? '店舗マンション' :
+                                         data.property.propertyType === 'office_building' ? '商業ビル・店舗' : 'その他'}
+                                         {(data.property.propertyType === 'apartment' || data.property.propertyType === 'store_apartment') && '（小規模宅地軽減 適用中）'}
+                            </span>
+                        </h4>
+
+                        <div className="grid md:grid-cols-4 gap-6">
+                            <InputGroup
+                                label="土地固定資産税評価額"
+                                type="number"
+                                unit="万円"
+                                help="土地の固定資産税評価額。アパート・賃貸マンション、店舗マンションの場合は小規模宅地軽減（固定資産税1/6、都市計画税1/3）が自動適用されます。"
+                                value={data.expenses.landAssessedValue || ''}
+                                onChange={(e) => {
+                                    const val = parseFloat(e.target.value) || 0;
+                                    handleAssessedValueChange('land', val);
+                                }}
+                            />
+                            <InputGroup
+                                label="建物固定資産税評価額"
+                                type="number"
+                                unit="万円"
+                                help="建物の固定資産税評価額。固定資産税1.4%、都市計画税0.3%で自動計算されます。"
+                                value={data.expenses.buildingAssessedValue || ''}
+                                onChange={(e) => {
+                                    const val = parseFloat(e.target.value) || 0;
+                                    handleAssessedValueChange('building', val);
+                                }}
+                            />
+                            <InputGroup
+                                label="固都税(土地・年額)"
+                                type="number"
+                                unit="円"
+                                help="土地の固定資産税と都市計画税の合算年額。評価額から自動計算されますが、手動調整も可能です。"
+                                value={data.expenses.fixedAssetTaxLand === 0 ? '' : data.expenses.fixedAssetTaxLand}
+                                onChange={(e) => updateExpenses({ fixedAssetTaxLand: parseFloat(e.target.value) || 0 })}
+                            />
+                            <InputGroup
+                                label="固都税(建物・年額)"
+                                type="number"
+                                unit="円"
+                                help="建物の固定資産税と都市計画税の合算年額。評価額から自動計算されますが、手動調整も可能です。"
+                                value={data.expenses.fixedAssetTaxBuilding === 0 ? '' : data.expenses.fixedAssetTaxBuilding}
+                                onChange={(e) => updateExpenses({ fixedAssetTaxBuilding: parseFloat(e.target.value) || 0 })}
+                            />
+                        </div>
                     </div>
                 </Card>
 

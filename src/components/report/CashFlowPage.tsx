@@ -34,7 +34,8 @@ export const CashFlowPage: React.FC<CashFlowPageProps> = ({ projection, startYea
                             <th className="py-1.5 px-1 border-r border-blue-500/30 text-rose-200">税額</th>
                             <th className="py-1.5 px-1 border-r border-blue-500/30 bg-emerald-700/40 font-bold">税引後CF</th>
                             <th className="py-1.5 px-1 border-r border-blue-500/30 text-blue-200">DSCR</th>
-                            <th className="py-1.5 px-1 text-emerald-200 rounded-tr-lg">累積CF</th>
+                            <th className="py-1.5 px-1 border-r border-emerald-500/30 text-emerald-200">累積CF</th>
+                            <th className="py-1.5 px-1 text-blue-200 rounded-tr-lg">ローン残高</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -52,7 +53,8 @@ export const CashFlowPage: React.FC<CashFlowPageProps> = ({ projection, startYea
                                     <td className="py-1 px-1 border-r border-slate-100 text-rose-500 tabular-nums">{formatCurrency(row.taxAmount)}</td>
                                     <td className="py-1 px-1 border-r border-slate-100 font-bold text-emerald-700 bg-emerald-50/30 tabular-nums">{formatCurrency(row.atcf)}</td>
                                     <td className="py-1 px-1 border-r border-slate-100 text-blue-500 tabular-nums">{row.dscr === Infinity ? '∞' : row.dscr.toFixed(2)}</td>
-                                    <td className={`py-1 px-1 tabular-nums ${row.accumulatedCashFlow >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>{formatCurrency(row.accumulatedCashFlow)}</td>
+                                    <td className={`py-1 px-1 border-r border-slate-100 tabular-nums ${row.accumulatedCashFlow >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>{formatCurrency(row.accumulatedCashFlow)}</td>
+                                    <td className="py-1 px-1 text-slate-500 tabular-nums font-mono">{formatCurrency(row.loanBalance)}</td>
                                 </tr>
                             );
                         })}
