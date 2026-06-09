@@ -28,12 +28,7 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ children }) => {
                         <div className="flex gap-3">
                             <button
                                 onClick={() => {
-                                    const overlay = document.getElementById('report-preview-overlay');
-                                    if (overlay) overlay.classList.add('printing');
                                     window.print();
-                                    setTimeout(() => {
-                                        if (overlay) overlay.classList.remove('printing');
-                                    }, 500);
                                 }}
                                 className="px-4 py-1.5 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-500 font-medium"
                             >
@@ -74,46 +69,13 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ children }) => {
                 }
 
                 @media print {
-                    /* 日本語コメント: 印刷時に一旦大元のコンテナ全体を非可視（透明）にする（子孫すべての強制非表示指定は避ける） */
-                    html, body, #root {
+                    /* 日本語コメント: プレビュー画面（#report-preview-overlay）が存在する場合にのみ、大元の入力画面等を隠してレポートだけを印刷するための設定 */
+                    body:has(#report-preview-overlay) #root {
                         visibility: hidden !important;
                     }
                     
-                    /* 日本語コメント: 印刷対象のエリア（印刷専用エリアおよび印刷用プレビューオーバーレイ）と、その中にあるすべての子要素のみを可視化する */
-                    #report-print-area,
-                    #report-preview-overlay.printing {
+                    body:has(#report-preview-overlay) #report-preview-overlay {
                         visibility: visible !important;
-                    }
-                    #report-print-area *,
-                    #report-preview-overlay.printing * {
-                        visibility: visible !important;
-                    }
-                    
-                    /* 日本語コメント: 印刷対象外（no-printクラス）の要素は完全に非表示（レイアウトからも消去）にする */
-                    .no-print,
-                    .no-print * {
-                        display: none !important;
-                        visibility: hidden !important;
-                    }
-                    
-                    /* 日本語コメント: プレビュー画面自体が印刷中でない（printingクラスを持たない）場合は非表示にする */
-                    #report-preview-overlay:not(.printing) {
-                        display: none !important;
-                        visibility: hidden !important;
-                    }
-
-                    /* 日本語コメント: 印刷専用エリアを用紙の左上に絶対配置する */
-                    #report-print-area {
-                        display: block !important;
-                        position: absolute !important;
-                        left: 0 !important;
-                        top: 0 !important;
-                        width: 297mm !important;
-                        height: auto !important;
-                    }
-                    
-                    /* 日本語コメント: 印刷用プレビューオーバーレイを用紙の左上に絶対配置し、背景や影などのプレビュー装飾をクリアする */
-                    #report-preview-overlay.printing {
                         display: block !important;
                         position: absolute !important;
                         left: 0 !important;
@@ -125,9 +87,37 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ children }) => {
                         box-shadow: none !important;
                     }
                     
-                    #report-preview-overlay.printing > div:last-of-type {
+                    body:has(#report-preview-overlay) #report-preview-overlay * {
+                        visibility: visible !important;
+                    }
+                    
+                    /* 日本語コメント: プレビュー画面内の印刷不要な要素（上部操作バー等）は完全に非表示にする */
+                    body:has(#report-preview-overlay) .no-print,
+                    body:has(#report-preview-overlay) .no-print * {
+                        display: none !important;
+                        visibility: hidden !important;
+                    }
+                    
+                    body:has(#report-preview-overlay) #report-preview-overlay > div:last-of-type {
                         padding: 0 !important;
                         gap: 0 !important;
+                    }
+
+                    /* 日本語コメント: プレビュー画面がない場合の、通常の印刷専用エリアの設定 */
+                    body:not(:has(#report-preview-overlay)) #root {
+                        visibility: hidden !important;
+                    }
+                    body:not(:has(#report-preview-overlay)) #report-print-area {
+                        visibility: visible !important;
+                        display: block !important;
+                        position: absolute !important;
+                        left: 0 !important;
+                        top: 0 !important;
+                        width: 297mm !important;
+                        height: auto !important;
+                    }
+                    body:not(:has(#report-preview-overlay)) #report-print-area * {
+                        visibility: visible !important;
                     }
 
                     /* 日本語コメント: A4横サイズ（横297mm×縦210mm）の印刷ページ設定 */
