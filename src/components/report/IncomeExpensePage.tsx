@@ -6,9 +6,10 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 interface IncomeExpensePageProps {
     data: SimulationData;
     expenseData: { name: string; value: number }[];
+    pageNumber?: number;
 }
 
-export const IncomeExpensePage: React.FC<IncomeExpensePageProps> = ({ data, expenseData }) => {
+export const IncomeExpensePage: React.FC<IncomeExpensePageProps> = ({ data, expenseData, pageNumber }) => {
     const COLORS = ['#3b82f6', '#06b6d4', '#8b5cf6', '#f59e0b', '#ec4899']; // Blue, Cyan, Violet, Amber, Pink
 
     const totalMonthlyRentOnly = data.rentRoll.roomTypes.reduce((acc, r) => acc + r.rent * r.count, 0);
@@ -73,7 +74,7 @@ export const IncomeExpensePage: React.FC<IncomeExpensePageProps> = ({ data, expe
             {/* Header */}
             <div className="flex justify-between items-end mb-6 border-b-2 border-blue-600 pb-2 flex-shrink-0">
                 <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">収支詳細</h2>
-                <p className="text-blue-400 text-[10px] uppercase tracking-widest">Page 03 — 収入と支出</p>
+                <p className="text-blue-400 text-[10px] uppercase tracking-widest">Page 0{pageNumber || 4} — 収入と支出</p>
             </div>
 
             <div className="grid grid-cols-2 gap-12 flex-1 min-h-0">

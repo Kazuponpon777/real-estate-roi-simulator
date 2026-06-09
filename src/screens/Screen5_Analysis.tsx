@@ -32,6 +32,7 @@ import { generateScenarios, generateSensitivityMatrix } from '../utils/scenarioA
 // New Landscape Report Components
 import { ReportCover } from '../components/report/ReportCover';
 import { ExecutiveSummaryPage } from '../components/report/ExecutiveSummaryPage';
+import { TenYearTransitionPage } from '../components/report/TenYearTransitionPage';
 import { IncomeExpensePage } from '../components/report/IncomeExpensePage';
 import { ChartPage } from '../components/report/ChartPage';
 import { CashFlowPage } from '../components/report/CashFlowPage';
@@ -150,6 +151,94 @@ export const Screen5_Analysis: React.FC = () => {
     }, [data.advancedSettings?.exitCapRate]);
 
     const projectionData = useMemo(() => calculateLongTermProjection(data), [data]);
+
+    // === 簡易資金収支（1〜10年目）の計算 ===
+    const yearlyDetails = useMemo(() => {
+        const isLeaseMode = data.mode === 'land_lease';
+        const totalMonthlyRentOnlyRes = data.rentRoll.roomTypes
+            .filter((r) => (r.usage || 'residential') === 'residential')
+            .reduce((acc, r) => acc + r.rent * r.count, 0);
+
+        const totalMonthlyRentOnlyComm = data.rentRoll.roomTypes
+            .filter((r) => r.usage === 'commercial')
+            .reduce((acc, r) => acc + r.rent * r.count, 0);
+
+        const totalMonthlyCommonFee = data.rentRoll.roomTypes.reduce((acc, r) => acc + r.commonFee * r.count, 0);
+        const totalMonthlyParking = data.rentRoll.parkingCount * data.rentRoll.parkingFee;
+        const rentDeclineRate = data.advancedSettings?.rentDeclineRate ?? 1.0;
+
+        const getYearlyIncomeDetail = (year: number) => {
+            const declineFactor = Math.pow(1 - rentDeclineRate / 100, year - 1);
+            const resRent = totalMonthlyRentOnlyRes * 12 * declineFactor;
+            const commRent = totalMonthlyRentOnlyComm * 12 * declineFactor;
+            const commonFee = totalMonthlyCommonFee * 12 * declineFactor;
+            const parking = totalMonthlyParking * 12;
+            const other = (data.rentRoll.otherRevenue + (data.rentRoll.solarPowerIncome || 0)) * 12;
+            const subtotal = resRent + commRent + commonFee + parking + other;
+
+            const baseVacancyRate = data.rentRoll.occupancyRate !== undefined ? (100 - data.rentRoll.occupancyRate) : 5;
+            const vacancyRiseRate = data.advancedSettings?.vacancyRiseRate ?? 0.5;
+            let currentVacancyRate = baseVacancyRate + (vacancyRiseRate * (year - 1));
+            if (currentVacancyRate > 100) currentVacancyRate = 100;
+            if (currentVacancyRate < 0) currentVacancyRate = 0;
+
+            const vacancyLoss = subtotal * (currentVacancyRate / 100);
+            const diff = subtotal - vacancyLoss;
+
+            const securityDeposit = year === 1 ? (data.funding.securityDepositIn || 0) * 10000 : 0;
+            const cooperationMoney = (year === 1 && isLeaseMode) ? (data.funding.cooperationMoney || 0) * 10000 : 0;
+
+            const totalIncome = diff + securityDeposit + cooperationMoney;
+
+            return { resRent, commRent, commonFee, parking, subtotal, vacancyLoss, diff, securityDeposit, cooperationMoney, totalIncome };
+        };
+
+        const getYearlyExpenseDetail = (year: number) => {
+            const row = projectionData.find((p) => p.year === year);
+            if (!row) {
+                return { ads: 0, management: 0, publicTaxes: 0, landFixed: 0, landCity: 0, buildingFixed: 0, buildingCity: 0, totalExpense: 0, netCashflow: 0, cooperationReturn: 0 };
+            }
+
+            const ads = row.tmT;
+            const landFixed = isLeaseMode ? 0 : (data.expenses.fixedAssetTaxLand || 0);
+            const landCity = isLeaseMode ? 0 : (data.expenses.cityPlanningTaxLand || 0);
+            const buildingFixed = data.expenses.fixedAssetTaxBuilding || 0;
+            const buildingCity = data.expenses.cityPlanningTaxBuilding || 0;
+            const publicTaxes = landFixed + landCity + buildingFixed + buildingCity;
+
+            const landLeaseFeeAnnual = isLeaseMode ? (data.advancedSettings?.landLeaseFee ?? 0) * 12 : 0;
+            const management = row.opex - publicTaxes + landLeaseFeeAnnual;
+            const cooperationReturn = row.cooperationReturn || 0;
+            const totalExpense = ads + publicTaxes + management + cooperationReturn;
+            
+            const incomeDetail = getYearlyIncomeDetail(year);
+            const netCashflow = incomeDetail.totalIncome - totalExpense;
+
+            return { ads, management, publicTaxes, landFixed, landCity, buildingFixed, buildingCity, totalExpense, netCashflow, cooperationReturn };
+        };
+
+        return Array.from({ length: 10 }, (_, idx) => {
+            const y = idx + 1;
+            return {
+                year: y,
+                income: getYearlyIncomeDetail(y),
+                expense: getYearlyExpenseDetail(y),
+            };
+        });
+    }, [data, projectionData]);
+
+    const getSum = (selector: (d: any) => number): number => {
+        return yearlyDetails.reduce((sum, d) => sum + selector(d), 0);
+    };
+
+    const formatThousandYen = (yen: number, isMinusTriangle: boolean = false): string => {
+        if (yen === 0) return '—';
+        const val = Math.round(yen / 1000);
+        if (val < 0) {
+            return isMinusTriangle ? `▲ ${Math.abs(val).toLocaleString()}` : `-${Math.abs(val).toLocaleString()}`;
+        }
+        return val.toLocaleString();
+    };
 
     const handleLoadJSON = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -393,16 +482,18 @@ export const Screen5_Analysis: React.FC = () => {
                         <ReportCover data={data} />
                         {/* Page 2: Executive Summary */}
                         <ExecutiveSummaryPage data={data} kpi={{ grossYield, netYield, beforeTaxCashFlow, totalBudgetYen }} />
-                        {/* Page 3: Income & Expenses */}
-                        <IncomeExpensePage data={data} expenseData={expenseData} />
-                        {/* Page 4: Long-term Analysis */}
-                        <ChartPage projectionData={projectionData} />
-                        {/* Page 5: Cash Flow (1-20 years) */}
-                        <CashFlowPage projection={projectionData} startYear={1} endYear={20} pageNumber={5} />
-                        {/* Page 6: Cash Flow (21-35 years) */}
-                        <CashFlowPage projection={projectionData} startYear={21} endYear={35} pageNumber={6} />
-                        {/* Page 7: Appendices (Map & Documents) */}
-                        <AppendicesPage data={data} pageNumber={7} />
+                        {/* Page 3: Ten Year Transition Table (New) */}
+                        <TenYearTransitionPage data={data} pageNumber={3} />
+                        {/* Page 4: Income & Expenses */}
+                        <IncomeExpensePage data={data} expenseData={expenseData} pageNumber={4} />
+                        {/* Page 5: Long-term Analysis */}
+                        <ChartPage projectionData={projectionData} pageNumber={5} />
+                        {/* Page 6: Cash Flow (1-20 years) */}
+                        <CashFlowPage projection={projectionData} startYear={1} endYear={20} pageNumber={6} />
+                        {/* Page 7: Cash Flow (21-35 years) */}
+                        <CashFlowPage projection={projectionData} startYear={21} endYear={35} pageNumber={7} />
+                        {/* Page 8: Appendices (Map & Documents) */}
+                        <AppendicesPage data={data} pageNumber={8} />
                     </PrintLayout>
                 </div>
             </div>
@@ -774,6 +865,295 @@ export const Screen5_Analysis: React.FC = () => {
                     </Card>
  
                 </div>
+
+                {/* 資金収支の推移表 (1〜10年目、画面用) */}
+                <Card title="資金収支の推移表 (1〜10年目)" className="bg-white border border-[#ebd9c5] shadow-md">
+                    <p className="text-xs text-[#8c6c59] mb-4 font-medium">
+                        ※ 一般的な提案書に用いられる実務フォーマットです。手残り（資金収支）の推移を直感的に把握できます。（単位：千円）
+                    </p>
+
+                    {/* 前提条件カード (3枚) */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        {/* 家賃の改定率等 */}
+                        <div className="bg-[#fcf9f2] border border-[#ebd9c5]/60 rounded-xl p-3.5 text-xs space-y-1 shadow-sm">
+                            <p className="font-bold text-[#8c6114] border-b border-[#ebd9c5]/40 pb-1 mb-2.5 flex justify-between">
+                                <span>📊 家賃の改定率設定</span>
+                                <span className="text-[10px] text-slate-400">年率</span>
+                            </p>
+                            <div className="flex justify-between text-slate-600">
+                                <span>住宅家賃下落率</span>
+                                <span className="font-mono font-semibold">{localRentDecline.toFixed(1)}% /年</span>
+                            </div>
+                            <div className="flex justify-between text-slate-600">
+                                <span>非住宅家賃下落率</span>
+                                <span className="font-mono font-semibold">{localRentDecline.toFixed(1)}% /年</span>
+                            </div>
+                            <div className="flex justify-between text-slate-600">
+                                <span>駐車料改定率</span>
+                                <span className="font-mono font-semibold">0.0% /年</span>
+                            </div>
+                        </div>
+
+                        {/* 想定入居率 */}
+                        <div className="bg-[#fcf9f2] border border-[#ebd9c5]/60 rounded-xl p-3.5 text-xs space-y-1 shadow-sm">
+                            <p className="font-bold text-[#8c6114] border-b border-[#ebd9c5]/40 pb-1 mb-2.5 flex justify-between">
+                                <span>🏠 入居率・空室上昇設定</span>
+                                <span className="text-[10px] text-slate-400">初期 ➡ 経年</span>
+                            </p>
+                            <div className="flex justify-between text-slate-600">
+                                <span>初期想定入居率</span>
+                                <span className="font-mono font-semibold">{data.rentRoll.occupancyRate || 95}%</span>
+                            </div>
+                            <div className="flex justify-between text-slate-600">
+                                <span>毎年空室上昇幅</span>
+                                <span className="font-mono font-semibold">+{localVacancyRise.toFixed(1)}% /年</span>
+                            </div>
+                            <div className="flex justify-between text-slate-600">
+                                <span>10年目想定入居率</span>
+                                <span className="font-mono font-semibold">
+                                    {Math.max(0, (data.rentRoll.occupancyRate || 95) - localVacancyRise * 9).toFixed(1)}%
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* 毎年の入替り率等 */}
+                        <div className="bg-[#fcf9f2] border border-[#ebd9c5]/60 rounded-xl p-3.5 text-xs space-y-1 shadow-sm">
+                            <p className="font-bold text-[#8c6114] border-b border-[#ebd9c5]/40 pb-1 mb-2.5 flex justify-between">
+                                <span>🔄 更新・入替り想定</span>
+                                <span className="text-[10px] text-slate-400">標準目安</span>
+                            </p>
+                            <div className="flex justify-between text-slate-600">
+                                <span>毎年の入替り率</span>
+                                <span className="font-mono font-semibold">25.0% (4年毎)</span>
+                            </div>
+                            <div className="flex justify-between text-slate-600">
+                                <span>再入居までの空室月数</span>
+                                <span className="font-mono font-semibold">1.0 ヶ月</span>
+                            </div>
+                            <div className="flex justify-between text-slate-600">
+                                <span>更新料設定</span>
+                                <span className="font-mono font-semibold">{data.rentRoll.renewalFeeMonth || 1} ヶ月 / 2年</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* テーブル表示 */}
+                    <div className="overflow-x-auto rounded-xl border border-[#ebd9c5]/60 shadow-sm">
+                        <table className="w-full text-xs text-right border-collapse" style={{ minWidth: '950px' }}>
+                            <thead>
+                                <tr className="bg-gradient-to-r from-blue-700 to-indigo-700 text-white font-bold text-xs uppercase tracking-wider">
+                                    <th className="py-2.5 px-3 text-center border border-slate-200 w-32 bg-slate-900/10">項 目</th>
+                                    {yearlyDetails.map((d) => (
+                                        <th key={d.year} className="py-2.5 px-1.5 border border-slate-200 text-center w-16">{d.year}年目</th>
+                                    ))}
+                                    <th className="py-2.5 px-3 border border-slate-200 text-center w-24 rounded-tr-xl">1〜10年目計</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-200">
+                                {/* 満室時 住宅賃料 */}
+                                <tr className="bg-slate-50/55 hover:bg-slate-100/30">
+                                    <td className="py-1.5 px-3 border border-slate-200 text-left font-semibold text-slate-700">満室時 住宅賃料</td>
+                                    {yearlyDetails.map((d) => (
+                                        <td key={d.year} className="py-1.5 px-1.5 border border-slate-200 font-mono text-slate-500">{formatThousandYen(d.income.resRent)}</td>
+                                    ))}
+                                    <td className="py-1.5 px-3 border border-slate-200 font-mono font-bold text-slate-600 bg-slate-100/30">
+                                        {formatThousandYen(getSum((d) => d.income.resRent))}
+                                    </td>
+                                </tr>
+                                {/* 満室時 店舗賃料 */}
+                                <tr className="bg-slate-50/55 hover:bg-slate-100/30">
+                                    <td className="py-1.5 px-3 border border-slate-200 text-left font-semibold text-slate-700">満室時 店舗賃料</td>
+                                    {yearlyDetails.map((d) => (
+                                        <td key={d.year} className="py-1.5 px-1.5 border border-slate-200 font-mono text-slate-500">{formatThousandYen(d.income.commRent)}</td>
+                                    ))}
+                                    <td className="py-1.5 px-3 border border-slate-200 font-mono font-bold text-slate-600 bg-slate-100/30">
+                                        {formatThousandYen(getSum((d) => d.income.commRent))}
+                                    </td>
+                                </tr>
+                                {/* 共益費収入 */}
+                                <tr className="bg-slate-50/55 hover:bg-slate-100/30">
+                                    <td className="py-1.5 px-3 border border-slate-200 text-left font-semibold text-slate-700">共益費収入</td>
+                                    {yearlyDetails.map((d) => (
+                                        <td key={d.year} className="py-1.5 px-1.5 border border-slate-200 font-mono text-slate-500">{formatThousandYen(d.income.commonFee)}</td>
+                                    ))}
+                                    <td className="py-1.5 px-3 border border-slate-200 font-mono font-bold text-slate-600 bg-slate-100/30">
+                                        {formatThousandYen(getSum((d) => d.income.commonFee))}
+                                    </td>
+                                </tr>
+                                {/* 駐車料収入 */}
+                                <tr className="bg-slate-50/55 hover:bg-slate-100/30">
+                                    <td className="py-1.5 px-3 border border-slate-200 text-left font-semibold text-slate-700">駐車料収入</td>
+                                    {yearlyDetails.map((d) => (
+                                        <td key={d.year} className="py-1.5 px-1.5 border border-slate-200 font-mono text-slate-500">{formatThousandYen(d.income.parking)}</td>
+                                    ))}
+                                    <td className="py-1.5 px-3 border border-slate-200 font-mono font-bold text-slate-600 bg-slate-100/30">
+                                        {formatThousandYen(getSum((d) => d.income.parking))}
+                                    </td>
+                                </tr>
+                                {/* 満室収入小計 (A) */}
+                                <tr className="bg-blue-50/20 font-bold text-blue-900 border-t-2 border-slate-300">
+                                    <td className="py-1.5 px-3 border border-slate-200 text-left">満室収入小計 (A)</td>
+                                    {yearlyDetails.map((d) => (
+                                        <td key={d.year} className="py-1.5 px-1.5 border border-slate-200 font-mono">{formatThousandYen(d.income.subtotal)}</td>
+                                    ))}
+                                    <td className="py-1.5 px-3 border border-slate-200 font-mono bg-blue-100/30">
+                                        {formatThousandYen(getSum((d) => d.income.subtotal))}
+                                    </td>
+                                </tr>
+                                {/* 空室損失 */}
+                                <tr className="text-rose-600 bg-rose-50/10 hover:bg-rose-100/10">
+                                    <td className="py-1.5 px-3 border border-slate-200 text-left">空室損失</td>
+                                    {yearlyDetails.map((d) => (
+                                        <td key={d.year} className="py-1.5 px-1.5 border border-slate-200 font-mono">▲ {formatThousandYen(d.income.vacancyLoss)}</td>
+                                    ))}
+                                    <td className="py-1.5 px-3 border border-slate-200 font-mono font-bold bg-rose-100/10">
+                                        ▲ {formatThousandYen(getSum((d) => d.income.vacancyLoss))}
+                                    </td>
+                                </tr>
+                                {/* 差引実質収入 (B) */}
+                                <tr className="font-semibold text-slate-800 bg-slate-100/30 hover:bg-slate-200/20">
+                                    <td className="py-1.5 px-3 border border-slate-200 text-left">差引実質収入 (B)</td>
+                                    {yearlyDetails.map((d) => (
+                                        <td key={d.year} className="py-1.5 px-1.5 border border-slate-200 font-mono">{formatThousandYen(d.income.diff)}</td>
+                                    ))}
+                                    <td className="py-1.5 px-3 border border-slate-200 font-mono font-bold bg-slate-200/30">
+                                        {formatThousandYen(getSum((d) => d.income.diff))}
+                                    </td>
+                                </tr>
+                                {/* 預り敷金・保証金 */}
+                                <tr className="hover:bg-slate-50">
+                                    <td className="py-1.5 px-3 border border-slate-200 text-left font-medium text-slate-500">預り敷金・保証金</td>
+                                    {yearlyDetails.map((d) => (
+                                        <td key={d.year} className="py-1.5 px-1.5 border border-slate-200 font-mono text-slate-500">{formatThousandYen(d.income.securityDeposit)}</td>
+                                    ))}
+                                    <td className="py-1.5 px-3 border border-slate-200 font-mono font-bold text-slate-600 bg-slate-100/20">
+                                        {formatThousandYen(getSum((d) => d.income.securityDeposit))}
+                                    </td>
+                                </tr>
+                                {/* 建設協力金調達 (借地リース時のみ) */}
+                                {data.mode === 'land_lease' && (
+                                    <tr className="hover:bg-slate-50">
+                                        <td className="py-1.5 px-3 border border-slate-200 text-left font-medium text-slate-500">建設協力金調達</td>
+                                        {yearlyDetails.map((d) => (
+                                            <td key={d.year} className="py-1.5 px-1.5 border border-slate-200 font-mono text-slate-500">{formatThousandYen(d.income.cooperationMoney)}</td>
+                                        ))}
+                                        <td className="py-1.5 px-3 border border-slate-200 font-mono font-bold text-slate-600 bg-slate-100/20">
+                                            {formatThousandYen(getSum((d) => d.income.cooperationMoney))}
+                                        </td>
+                                    </tr>
+                                )}
+                                {/* 収入合計 (イ) */}
+                                <tr className="bg-emerald-50/20 font-bold text-emerald-900 border-t border-b-2 border-slate-300">
+                                    <td className="py-1.5 px-3 border border-slate-200 text-left">収入合計 (イ)</td>
+                                    {yearlyDetails.map((d) => (
+                                        <td key={d.year} className="py-1.5 px-1.5 border border-slate-200 font-mono text-emerald-850">{formatThousandYen(d.income.totalIncome)}</td>
+                                    ))}
+                                    <td className="py-1.5 px-3 border border-slate-200 font-mono text-emerald-900 bg-emerald-100/30">
+                                        {formatThousandYen(getSum((d) => d.income.totalIncome))}
+                                    </td>
+                                </tr>
+
+                                {/* 借入金返済 (元利金) */}
+                                <tr className="hover:bg-slate-50">
+                                    <td className="py-1.5 px-3 border border-slate-200 text-left font-semibold text-slate-700">借入金返済 (元利金)</td>
+                                    {yearlyDetails.map((d) => (
+                                        <td key={d.year} className="py-1.5 px-1.5 border border-slate-200 font-mono text-slate-600">▲ {formatThousandYen(d.expense.ads)}</td>
+                                    ))}
+                                    <td className="py-1.5 px-3 border border-slate-200 font-mono font-bold text-slate-700 bg-slate-100/30">
+                                        ▲ {formatThousandYen(getSum((d) => d.expense.ads))}
+                                    </td>
+                                </tr>
+                                {/* 運営経費 (管理・BM等) */}
+                                <tr className="hover:bg-slate-50">
+                                    <td className="py-1.5 px-3 border border-slate-200 text-left font-medium text-slate-500">運営経費 (管理・BM等)</td>
+                                    {yearlyDetails.map((d) => (
+                                        <td key={d.year} className="py-1.5 px-1.5 border border-slate-200 font-mono text-slate-500">▲ {formatThousandYen(d.expense.management)}</td>
+                                    ))}
+                                    <td className="py-1.5 px-3 border border-slate-200 font-mono font-bold text-slate-600 bg-slate-100/20">
+                                        ▲ {formatThousandYen(getSum((d) => d.expense.management))}
+                                    </td>
+                                </tr>
+                                {/* 建設協力金返還支出 (借地リース時のみ) */}
+                                {data.mode === 'land_lease' && (
+                                    <tr className="hover:bg-slate-50 text-amber-800">
+                                        <td className="py-1.5 px-3 border border-slate-200 text-left font-medium">建設協力金返還支出</td>
+                                        {yearlyDetails.map((d) => (
+                                            <td key={d.year} className="py-1.5 px-1.5 border border-slate-200 font-mono text-amber-700">▲ {formatThousandYen(d.expense.cooperationReturn)}</td>
+                                        ))}
+                                        <td className="py-1.5 px-3 border border-slate-200 font-mono font-bold bg-slate-100/20 text-amber-900">
+                                            ▲ {formatThousandYen(getSum((d) => d.expense.cooperationReturn))}
+                                        </td>
+                                    </tr>
+                                )}
+
+                                {/* 租税 土地・固定資産税 */}
+                                <tr className="bg-slate-50/20 text-[10px] text-slate-500 hover:bg-slate-100/10">
+                                    <td className="py-1 px-3 border border-slate-200 text-left pl-5">租税 土地・固定資産税</td>
+                                    {yearlyDetails.map((d) => (
+                                        <td key={d.year} className="py-1 px-1.5 border border-slate-200 font-mono">▲ {formatThousandYen(d.expense.landFixed)}</td>
+                                    ))}
+                                    <td className="py-1 px-3 border border-slate-200 font-mono bg-slate-100/40">
+                                        ▲ {formatThousandYen(getSum((d) => d.expense.landFixed))}
+                                    </td>
+                                </tr>
+                                {/* 租税 土地・都市計画税 */}
+                                <tr className="bg-slate-50/20 text-[10px] text-slate-500 hover:bg-slate-100/10">
+                                    <td className="py-1 px-3 border border-slate-200 text-left pl-5">租税 土地・都市計画税</td>
+                                    {yearlyDetails.map((d) => (
+                                        <td key={d.year} className="py-1 px-1.5 border border-slate-200 font-mono">▲ {formatThousandYen(d.expense.landCity)}</td>
+                                    ))}
+                                    <td className="py-1 px-3 border border-slate-200 font-mono bg-slate-100/40">
+                                        ▲ {formatThousandYen(getSum((d) => d.expense.landCity))}
+                                    </td>
+                                </tr>
+                                {/* 租税 建物・固定資産税 */}
+                                <tr className="bg-slate-50/20 text-[10px] text-slate-500 hover:bg-slate-100/10">
+                                    <td className="py-1 px-3 border border-slate-200 text-left pl-5">租税 建物・固定資産税</td>
+                                    {yearlyDetails.map((d) => (
+                                        <td key={d.year} className="py-1 px-1.5 border border-slate-200 font-mono">▲ {formatThousandYen(d.expense.buildingFixed)}</td>
+                                    ))}
+                                    <td className="py-1 px-3 border border-slate-200 font-mono bg-slate-100/40">
+                                        ▲ {formatThousandYen(getSum((d) => d.expense.buildingFixed))}
+                                    </td>
+                                </tr>
+                                {/* 租税 建物・都市計画税 */}
+                                <tr className="bg-slate-50/20 text-[10px] text-slate-500 hover:bg-slate-100/10">
+                                    <td className="py-1 px-3 border border-slate-200 text-left pl-5">租税 建物・都市計画税</td>
+                                    {yearlyDetails.map((d) => (
+                                        <td key={d.year} className="py-1 px-1.5 border border-slate-200 font-mono">▲ {formatThousandYen(d.expense.buildingCity)}</td>
+                                    ))}
+                                    <td className="py-1 px-3 border border-slate-200 font-mono bg-slate-100/40">
+                                        ▲ {formatThousandYen(getSum((d) => d.expense.buildingCity))}
+                                    </td>
+                                </tr>
+
+                                {/* 支出合計 (ロ) */}
+                                <tr className="bg-violet-50/20 font-bold text-violet-900 border-t border-b-2 border-slate-300">
+                                    <td className="py-1.5 px-3 border border-slate-200 text-left">支出合計 (ロ)</td>
+                                    {yearlyDetails.map((d) => (
+                                        <td key={d.year} className="py-1.5 px-1.5 border border-slate-200 font-mono text-violet-850">▲ {formatThousandYen(d.expense.totalExpense)}</td>
+                                    ))}
+                                    <td className="py-1.5 px-3 border border-slate-200 font-mono text-violet-900 bg-violet-100/30">
+                                        ▲ {formatThousandYen(getSum((d) => d.expense.totalExpense))}
+                                    </td>
+                                </tr>
+
+                                {/* 差引：資金収支 (手残り) */}
+                                <tr className="bg-[#1e3d2f] text-white font-extrabold text-sm border-t-2 border-b-2 border-[#1e3d2f]">
+                                    <td className="py-2 px-3 border border-slate-300 text-left">差引：資金収支 (手残り)</td>
+                                    {yearlyDetails.map((d) => (
+                                        <td key={d.year} className="py-2 px-1.5 border border-slate-300 font-mono">
+                                            {formatThousandYen(d.expense.netCashflow, true)}
+                                        </td>
+                                    ))}
+                                    <td className="py-2 px-3 border border-slate-300 font-mono bg-[#162e23] text-emerald-250 font-black">
+                                        {formatThousandYen(getSum((d) => d.expense.netCashflow), true)}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </Card>
 
                 {/* 35年間 資金収支詳細テーブル (画面用) */}
                 <Card title="35年間 資金収支詳細テーブル" className="bg-white">

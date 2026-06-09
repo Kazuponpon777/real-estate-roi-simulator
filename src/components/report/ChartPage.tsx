@@ -4,15 +4,16 @@ import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, CartesianG
 
 interface ChartPageProps {
     projectionData: AnnualData[];
+    pageNumber?: number;
 }
 
-export const ChartPage: React.FC<ChartPageProps> = ({ projectionData }) => {
+export const ChartPage: React.FC<ChartPageProps> = ({ projectionData, pageNumber }) => {
     return (
         <div className="report-page flex flex-col">
             {/* Header */}
             <div className="flex justify-between items-end mb-5 border-b-2 border-blue-600 pb-2 flex-shrink-0">
                 <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">長期収支シミュレーション</h2>
-                <p className="text-blue-400 text-[10px] uppercase tracking-widest">Page 04 — 35年推移</p>
+                <p className="text-blue-400 text-[10px] uppercase tracking-widest">Page 0{pageNumber || 5} — 35年推移</p>
             </div>
 
             {/* Main Chart */}
