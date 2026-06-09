@@ -74,15 +74,17 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ children }) => {
                 }
 
                 @media print {
-                    /* 日本語コメント: 印刷時に一旦画面上のすべての要素を非可視（透明）にする */
-                    html, body, #root, #root * {
+                    /* 日本語コメント: 印刷時に一旦大元のコンテナ全体を非可視（透明）にする（子孫すべての強制非表示指定は避ける） */
+                    html, body, #root {
                         visibility: hidden !important;
                     }
                     
                     /* 日本語コメント: 印刷対象のエリア（印刷専用エリアおよび印刷用プレビューオーバーレイ）と、その中にあるすべての子要素のみを可視化する */
                     #report-print-area,
+                    #report-preview-overlay.printing {
+                        visibility: visible !important;
+                    }
                     #report-print-area *,
-                    #report-preview-overlay.printing,
                     #report-preview-overlay.printing * {
                         visibility: visible !important;
                     }
