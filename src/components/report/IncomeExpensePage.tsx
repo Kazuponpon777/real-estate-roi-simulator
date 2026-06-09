@@ -11,7 +11,9 @@ interface IncomeExpensePageProps {
 export const IncomeExpensePage: React.FC<IncomeExpensePageProps> = ({ data, expenseData }) => {
     const COLORS = ['#3b82f6', '#06b6d4', '#8b5cf6', '#f59e0b', '#ec4899']; // Blue, Cyan, Violet, Amber, Pink
 
-    const totalMonthlyRent = data.rentRoll.roomTypes.reduce((acc, r) => acc + (r.rent + r.commonFee) * r.count, 0);
+    const totalMonthlyRentOnly = data.rentRoll.roomTypes.reduce((acc, r) => acc + r.rent * r.count, 0);
+    const totalMonthlyCommonFee = data.rentRoll.roomTypes.reduce((acc, r) => acc + r.commonFee * r.count, 0);
+    const totalMonthlyRent = totalMonthlyRentOnly + totalMonthlyCommonFee;
     const totalMonthlyParking = data.rentRoll.parkingCount * data.rentRoll.parkingFee;
     const monthlyGrossRevenue = totalMonthlyRent + totalMonthlyParking + (data.rentRoll.solarPowerIncome || 0) + data.rentRoll.otherRevenue;
 
@@ -117,13 +119,31 @@ export const IncomeExpensePage: React.FC<IncomeExpensePageProps> = ({ data, expe
                     </h3>
 
                     {/* Income */}
-                    <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-lg px-4 py-3 mb-5">
+                    <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-lg px-4 py-3 mb-3">
                         <div className="flex justify-between items-end">
                             <div>
                                 <p className="text-[9px] text-emerald-500 uppercase tracking-wider font-medium">満室想定年収 (GPI)</p>
                                 <p className="text-xs text-emerald-400 mt-0.5">月額: {formatCurrency(monthlyGrossRevenue)}</p>
                             </div>
                             <p className="text-xl font-extrabold text-emerald-700">{formatCurrency(monthlyGrossRevenue * 12)}</p>
+                        </div>
+                    </div>
+
+                    {/* GPI Breakdown */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-[10px] space-y-1 mb-4">
+                        <div className="flex justify-between text-slate-500">
+                            <span>内、賃料収入 (年額)</span>
+                            <span className="font-semibold text-slate-700 font-mono">{formatCurrency(totalMonthlyRentOnly * 12)}</span>
+                        </div>
+                        <div className="flex justify-between text-slate-500">
+                            <span>内、共益費収入 (年額)</span>
+                            <span className="font-semibold text-slate-700 font-mono">{formatCurrency(totalMonthlyCommonFee * 12)}</span>
+                        </div>
+                        <div className="flex justify-between text-slate-500">
+                            <span>内、駐車場・その他 (年額)</span>
+                            <span className="font-semibold text-slate-700 font-mono">
+                                {formatCurrency((totalMonthlyParking + (data.rentRoll.solarPowerIncome || 0) + data.rentRoll.otherRevenue) * 12)}
+                            </span>
                         </div>
                     </div>
 

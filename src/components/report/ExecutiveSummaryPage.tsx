@@ -64,12 +64,20 @@ export const ExecutiveSummaryPage: React.FC<ExecutiveSummaryPageProps> = ({ data
                                 {formatCurrency(data.funding.loans.reduce((acc, l) => acc + l.amount, 0) * 10000)}
                             </span>
                         </div>
-                        <div className="flex justify-between py-2.5 border-b border-slate-200">
-                            <span className="text-slate-500">その他</span>
+                        <div className="flex justify-between py-2.5 border-b border-dashed border-slate-200">
+                            <span className="text-slate-500">預り敷金</span>
                             <span className="font-bold text-slate-700 font-mono text-xs">
-                                {formatCurrency((data.funding.cooperationMoney + data.funding.securityDepositIn) * 10000)}
+                                {formatCurrency(data.funding.securityDepositIn * 10000)}
                             </span>
                         </div>
+                        {data.funding.cooperationMoney > 0 && (
+                            <div className="flex justify-between py-2.5 border-b border-dashed border-slate-200">
+                                <span className="text-slate-500">建設協力金</span>
+                                <span className="font-bold text-slate-700 font-mono text-xs">
+                                    {formatCurrency(data.funding.cooperationMoney * 10000)}
+                                </span>
+                            </div>
+                        )}
                         <div className="flex justify-between py-3 bg-blue-50 px-3 -mx-1 mt-1 rounded-lg border border-blue-100">
                             <span className="font-bold text-blue-800 text-xs uppercase">合計</span>
                             <span className="font-extrabold text-blue-800 font-mono">{formatCurrency(kpi.totalBudgetYen)}</span>

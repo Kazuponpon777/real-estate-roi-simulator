@@ -213,7 +213,9 @@ export const Screen5_Analysis: React.FC = () => {
 
     // 2. Income
     const rentRollMetrics = useMemo(() => {
-        const totalMonthlyRent = data.rentRoll.roomTypes.reduce((acc, r) => acc + (r.rent + r.commonFee) * r.count, 0);
+        const totalMonthlyRentOnly = data.rentRoll.roomTypes.reduce((acc, r) => acc + r.rent * r.count, 0);
+        const totalMonthlyCommonFee = data.rentRoll.roomTypes.reduce((acc, r) => acc + r.commonFee * r.count, 0);
+        const totalMonthlyRent = totalMonthlyRentOnly + totalMonthlyCommonFee;
         const totalMonthlyParking = data.rentRoll.parkingCount * data.rentRoll.parkingFee;
         const monthlyGrossIncome = totalMonthlyRent + totalMonthlyParking;
         const annualPotentialGrossIncome = (monthlyGrossIncome + data.rentRoll.otherRevenue + (data.rentRoll.solarPowerIncome || 0)) * 12;
@@ -221,10 +223,10 @@ export const Screen5_Analysis: React.FC = () => {
         const vacancyLoss = annualPotentialGrossIncome * (data.rentRoll.occupancyRate ? (100 - data.rentRoll.occupancyRate) / 100 : 0.05);
         const effectiveGrossIncome = annualPotentialGrossIncome - vacancyLoss;
 
-        return { totalMonthlyRent, totalMonthlyParking, monthlyGrossIncome, annualPotentialGrossIncome, vacancyLoss, effectiveGrossIncome };
+        return { totalMonthlyRentOnly, totalMonthlyCommonFee, totalMonthlyRent, totalMonthlyParking, monthlyGrossIncome, annualPotentialGrossIncome, vacancyLoss, effectiveGrossIncome };
     }, [data.rentRoll]);
 
-    const { annualPotentialGrossIncome, vacancyLoss, effectiveGrossIncome } = rentRollMetrics;
+    const { totalMonthlyRentOnly, totalMonthlyCommonFee, totalMonthlyParking, annualPotentialGrossIncome, vacancyLoss, effectiveGrossIncome } = rentRollMetrics;
 
     // 3. Operating Expenses (OPEX)
     const incomeExpenseMetrics = useMemo(() => {
@@ -513,6 +515,23 @@ export const Screen5_Analysis: React.FC = () => {
                         <div className="flex justify-between items-center py-2 border-b border-[#ebd9c5]/40">
                             <span className="text-[#3d251a]/85 font-medium">満室想定年収</span>
                             <span className="text-lg font-bold text-[#23150d]">{formatCurrency(annualPotentialGrossIncome)}</span>
+                        </div>
+                        {/* GPI Breakdown */}
+                        <div className="bg-[#fcf9f2]/60 p-3 rounded-2xl text-xs space-y-1.5 ml-4 border border-[#ebd9c5]/40 no-print shadow-sm">
+                            <div className="flex justify-between text-[#3d251a]/90 font-medium">
+                                <span>・内、賃料収入 (年額)</span>
+                                <span className="font-semibold text-slate-700 font-mono">{formatCurrency(totalMonthlyRentOnly * 12)}</span>
+                            </div>
+                            <div className="flex justify-between text-[#3d251a]/90 font-medium">
+                                <span>・内、共益費収入 (年額)</span>
+                                <span className="font-semibold text-slate-700 font-mono">{formatCurrency(totalMonthlyCommonFee * 12)}</span>
+                            </div>
+                            <div className="flex justify-between text-[#3d251a]/90 font-medium">
+                                <span>・内、駐車場・その他 (年額)</span>
+                                <span className="font-semibold text-slate-700 font-mono">
+                                    {formatCurrency((totalMonthlyParking + (data.rentRoll.solarPowerIncome || 0) + data.rentRoll.otherRevenue) * 12)}
+                                </span>
+                            </div>
                         </div>
                         <div className="flex justify-between items-center py-2 border-b border-[#ebd9c5]/40">
                             <span className="text-[#3d251a]/85 font-medium">空室損 ({100 - (data.rentRoll.occupancyRate || 100)}%)</span>

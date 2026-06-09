@@ -37,57 +37,12 @@ export const Screen4_RentRoll: React.FC = () => {
         }
     }, [data.rentRoll.roomTypes, data.rentRoll.securityDepositMonth, data.funding.securityDepositIn]);
 
-    // 物件種別の変更に伴う固都税の自動再計算
-    React.useEffect(() => {
-        if (data.expenses.landAssessedValue) {
-            const propType = data.property.propertyType || 'apartment';
-            const isResidential = propType === 'apartment' || propType === 'store_apartment';
-            const valueYen = data.expenses.landAssessedValue * 10000;
-            let taxLand = 0;
-            let cityTaxLand = 0;
-
-            if (isResidential) {
-                taxLand = Math.round(valueYen * 0.014 * (1 / 6));
-                cityTaxLand = Math.round(valueYen * 0.003 * (1 / 3));
-            } else {
-                taxLand = Math.round(valueYen * 0.014);
-                cityTaxLand = Math.round(valueYen * 0.003);
-            }
-            updateExpenses({
-                fixedAssetTaxLand: taxLand + cityTaxLand
-            });
-        }
-    }, [data.property.propertyType]);
-
-    // 固定資産税評価額の変更ハンドラ
+    // 固定資産税評価額の変更ハンドラ (計算はすべてストアのアクションにて自動実行されます)
     const handleAssessedValueChange = (type: 'land' | 'building', value: number) => {
-        const propType = data.property.propertyType || 'apartment';
-        const isResidential = propType === 'apartment' || propType === 'store_apartment';
-
         if (type === 'land') {
-            const valueYen = value * 10000;
-            let taxLand = 0;
-            let cityTaxLand = 0;
-
-            if (isResidential) {
-                taxLand = Math.round(valueYen * 0.014 * (1 / 6));
-                cityTaxLand = Math.round(valueYen * 0.003 * (1 / 3));
-            } else {
-                taxLand = Math.round(valueYen * 0.014);
-                cityTaxLand = Math.round(valueYen * 0.003);
-            }
-            updateExpenses({
-                landAssessedValue: value,
-                fixedAssetTaxLand: taxLand + cityTaxLand
-            });
+            updateExpenses({ landAssessedValue: value });
         } else {
-            const valueYen = value * 10000;
-            const taxBuilding = Math.round(valueYen * 0.014);
-            const cityTaxBuilding = Math.round(valueYen * 0.003);
-            updateExpenses({
-                buildingAssessedValue: value,
-                fixedAssetTaxBuilding: taxBuilding + cityTaxBuilding
-            });
+            updateExpenses({ buildingAssessedValue: value });
         }
     };
 
@@ -515,16 +470,41 @@ export const Screen4_RentRoll: React.FC = () => {
                                 type="number"
                                 unit="円"
                                 help="土地の固定資産税と都市計画税の合算年額。評価額から自動計算されますが、手動調整も可能です。"
-                                value={data.expenses.fixedAssetTaxLand === 0 ? '' : data.expenses.fixedAssetTaxLand}
-                                onChange={(e) => updateExpenses({ fixedAssetTaxLand: parseFloat(e.target.value) || 0 })}
+                                value={(data.expenses.fixedAssetTaxLand || 0) + (data.expenses.cityPlanningTaxLand || 0) || ''}
+                                onChange={(e) => {
+                                    const total = parseFloat(e.target.value) || 0;
+                                    const propType = data.property.propertyType || 'apartment';
+                                    const isResidential = propType === 'apartment' || propType === 'store_apartment';
+                                    let fixedTax = 0;
+                                    let cityTax = 0;
+                                    if (isResidential) {
+                                        fixedTax = Math.round(total * 0.7);
+                                        cityTax = total - fixedTax;
+                                    } else {
+                                        fixedTax = Math.round(total * (14 / 17));
+                                        cityTax = total - fixedTax;
+                                    }
+                                    updateExpenses({
+                                        fixedAssetTaxLand: fixedTax,
+                                        cityPlanningTaxLand: cityTax
+                                    });
+                                }}
                             />
                             <InputGroup
                                 label="固都税(建物・年額)"
                                 type="number"
                                 unit="円"
                                 help="建物の固定資産税と都市計画税の合算年額。評価額から自動計算されますが、手動調整も可能です。"
-                                value={data.expenses.fixedAssetTaxBuilding === 0 ? '' : data.expenses.fixedAssetTaxBuilding}
-                                onChange={(e) => updateExpenses({ fixedAssetTaxBuilding: parseFloat(e.target.value) || 0 })}
+                                value={(data.expenses.fixedAssetTaxBuilding || 0) + (data.expenses.cityPlanningTaxBuilding || 0) || ''}
+                                onChange={(e) => {
+                                    const total = parseFloat(e.target.value) || 0;
+                                    const fixedTax = Math.round(total * (14 / 17));
+                                    const cityTax = total - fixedTax;
+                                    updateExpenses({
+                                        fixedAssetTaxBuilding: fixedTax,
+                                        cityPlanningTaxBuilding: cityTax
+                                    });
+                                }}
                             />
                         </div>
                     </div>

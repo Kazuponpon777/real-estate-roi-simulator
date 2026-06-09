@@ -404,10 +404,23 @@ export const useSimulationStore = create<SimulationState>()(
 
             updateProperty: (updates) =>
                 set((state) => {
-                    // 日本語コメント: リアルタイムサニタイズは入力途中（"ht"など）で入力が消去されるため廃止
-                    // XSS対策は入力フォームのonBlurおよび遷移時のサニタイズにて担保します
                     const nextProperty = { ...state.data.property, ...updates };
-                    return { data: { ...state.data, property: nextProperty } };
+                    const nextExpenses = { ...state.data.expenses };
+
+                    // 日本語コメント: 物件種別が変更され、かつ土地評価額が入力されている場合、固都税を自動的に再計算・連動させる
+                    if (updates.propertyType !== undefined && nextExpenses.landAssessedValue) {
+                        const isResidential = updates.propertyType === 'apartment' || updates.propertyType === 'store_apartment';
+                        const valueYen = nextExpenses.landAssessedValue * 10000;
+                        if (isResidential) {
+                            nextExpenses.fixedAssetTaxLand = Math.round(valueYen * 0.014 * (1 / 6));
+                            nextExpenses.cityPlanningTaxLand = Math.round(valueYen * 0.003 * (1 / 3));
+                        } else {
+                            nextExpenses.fixedAssetTaxLand = Math.round(valueYen * 0.014);
+                            nextExpenses.cityPlanningTaxLand = Math.round(valueYen * 0.003);
+                        }
+                    }
+
+                    return { data: { ...state.data, property: nextProperty, expenses: nextExpenses } };
                 }),
 
             updateBudget: (updates) =>
@@ -440,7 +453,32 @@ export const useSimulationStore = create<SimulationState>()(
                 set((state) => ({ data: { ...state.data, rentRoll: { ...state.data.rentRoll, ...updates } } })),
 
             updateExpenses: (updates) =>
-                set((state) => ({ data: { ...state.data, expenses: { ...state.data.expenses, ...updates } } })),
+                set((state) => {
+                    const nextExpenses = { ...state.data.expenses, ...updates };
+                    const propType = state.data.property.propertyType || 'apartment';
+                    const isResidential = propType === 'apartment' || propType === 'store_apartment';
+
+                    // 日本語コメント: 土地評価額が変更された場合の固都税（固定資産税、都市計画税）自動計算・分離格納
+                    if (updates.landAssessedValue !== undefined) {
+                        const valueYen = updates.landAssessedValue * 10000;
+                        if (isResidential) {
+                            nextExpenses.fixedAssetTaxLand = Math.round(valueYen * 0.014 * (1 / 6));
+                            nextExpenses.cityPlanningTaxLand = Math.round(valueYen * 0.003 * (1 / 3));
+                        } else {
+                            nextExpenses.fixedAssetTaxLand = Math.round(valueYen * 0.014);
+                            nextExpenses.cityPlanningTaxLand = Math.round(valueYen * 0.003);
+                        }
+                    }
+
+                    // 日本語コメント: 建物評価額が変更された場合の固都税（固定資産税、都市計画税）自動計算・分離格納
+                    if (updates.buildingAssessedValue !== undefined) {
+                        const valueYen = updates.buildingAssessedValue * 10000;
+                        nextExpenses.fixedAssetTaxBuilding = Math.round(valueYen * 0.014);
+                        nextExpenses.cityPlanningTaxBuilding = Math.round(valueYen * 0.003);
+                    }
+
+                    return { data: { ...state.data, expenses: nextExpenses } };
+                }),
 
             updateAdvancedSettings: (updates) =>
                 set((state) => {
