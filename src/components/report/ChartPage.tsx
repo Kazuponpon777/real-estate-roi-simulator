@@ -8,6 +8,10 @@ interface ChartPageProps {
 }
 
 export const ChartPage: React.FC<ChartPageProps> = ({ projectionData, pageNumber }) => {
+    // 損益分岐点 (累積キャッシュフローがプラスに転じる年) と ローン完済年の計算
+    const paybackYear = projectionData.find(p => p.accumulatedCashFlow >= 0)?.year ?? null;
+    const loanFinishYear = projectionData.find(p => p.loanBalance === 0 && p.year > 0)?.year ?? null;
+
     return (
         <div className="report-page flex flex-col">
             {/* Header */}
@@ -38,7 +42,7 @@ export const ChartPage: React.FC<ChartPageProps> = ({ projectionData, pageNumber
             {/* Sub Charts */}
             <div className="h-32 grid grid-cols-2 gap-4 flex-shrink-0">
                 <div className="rounded-lg border border-emerald-100 bg-emerald-50/30 p-3 flex flex-col">
-                    <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-wider mb-1">累積キャッシュフロー</p>
+                    <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-wider mb-1">累積キャッシュフロー (損益分岐)</p>
                     <div className="flex-1 min-h-0">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={projectionData}>
@@ -46,19 +50,49 @@ export const ChartPage: React.FC<ChartPageProps> = ({ projectionData, pageNumber
                                 <XAxis dataKey="year" fontSize={8} tickLine={false} axisLine={false} />
                                 <YAxis tickFormatter={(val) => `${val / 10000}万`} width={32} fontSize={8} tickLine={false} axisLine={false} />
                                 <ReferenceLine y={0} stroke="#6ee7b7" />
+                                {paybackYear && (
+                                    <ReferenceLine 
+                                        x={paybackYear} 
+                                        stroke="#dc2626" 
+                                        strokeDasharray="3 3" 
+                                        strokeWidth={1.5} 
+                                        label={{ 
+                                            value: `損益分岐: ${paybackYear}年`, 
+                                            position: 'insideTopLeft', 
+                                            fill: '#dc2626', 
+                                            fontSize: 7, 
+                                            fontWeight: 'bold' 
+                                        }} 
+                                    />
+                                )}
                                 <Area type="monotone" dataKey="accumulatedCashFlow" stroke="#059669" fill="#34d399" fillOpacity={0.2} isAnimationActive={false} strokeWidth={1.5} />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
                 <div className="rounded-lg border border-violet-100 bg-violet-50/30 p-3 flex flex-col">
-                    <p className="text-[9px] font-bold text-violet-500 uppercase tracking-wider mb-1">ローン残債推移</p>
+                    <p className="text-[9px] font-bold text-violet-500 uppercase tracking-wider mb-1">ローン残債推移 (完済)</p>
                     <div className="flex-1 min-h-0">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={projectionData}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ede9fe" />
                                 <XAxis dataKey="year" fontSize={8} tickLine={false} axisLine={false} />
                                 <YAxis tickFormatter={(val) => `${val / 10000}万`} width={32} fontSize={8} tickLine={false} axisLine={false} />
+                                {loanFinishYear && (
+                                    <ReferenceLine 
+                                        x={loanFinishYear} 
+                                        stroke="#2563eb" 
+                                        strokeDasharray="3 3" 
+                                        strokeWidth={1.5} 
+                                        label={{ 
+                                            value: `ローン完済: ${loanFinishYear}年`, 
+                                            position: 'insideTopRight', 
+                                            fill: '#2563eb', 
+                                            fontSize: 7, 
+                                            fontWeight: 'bold' 
+                                        }} 
+                                    />
+                                )}
                                 <Area type="monotone" dataKey="loanBalance" stroke="#7c3aed" fill="#a78bfa" fillOpacity={0.2} isAnimationActive={false} strokeWidth={1.5} />
                             </AreaChart>
                         </ResponsiveContainer>

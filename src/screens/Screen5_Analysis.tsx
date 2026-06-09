@@ -857,6 +857,36 @@ export const Screen5_Analysis: React.FC = () => {
                                     <Tooltip formatter={(value: number | undefined) => formatCurrency(value || 0)} />
                                     <Legend />
                                     <ReferenceLine y={0} stroke="#cbd5e1" strokeWidth={1.5} />
+                                    {investmentMetrics.paybackYear && (
+                                        <ReferenceLine 
+                                            x={investmentMetrics.paybackYear} 
+                                            stroke="#dc2626" 
+                                            strokeDasharray="4 4" 
+                                            strokeWidth={2} 
+                                            label={{ 
+                                                value: `損益分岐点 (${investmentMetrics.paybackYear}年目)`, 
+                                                position: 'insideTopLeft', 
+                                                fill: '#dc2626', 
+                                                fontSize: 10, 
+                                                fontWeight: 'bold'
+                                            }} 
+                                        />
+                                    )}
+                                    {Math.max(...data.funding.loans.map(l => l.duration), 0) > 0 && (
+                                        <ReferenceLine 
+                                            x={Math.max(...data.funding.loans.map(l => l.duration), 0)} 
+                                            stroke="#2563eb" 
+                                            strokeDasharray="4 4" 
+                                            strokeWidth={2} 
+                                            label={{ 
+                                                value: `ローン完済 (${Math.max(...data.funding.loans.map(l => l.duration), 0)}年目)`, 
+                                                position: 'insideTopRight', 
+                                                fill: '#2563eb', 
+                                                fontSize: 10, 
+                                                fontWeight: 'bold'
+                                            }} 
+                                        />
+                                    )}
                                     <Area type="monotone" dataKey="loanBalance" name="ローン残高" stroke="#8c6114" fill="#ebd9c5" fillOpacity={0.3} />
                                     <Line type="monotone" dataKey="accumulatedCashFlow" name="累積キャッシュフロー" stroke="#1e3d2f" strokeWidth={3.5} dot={{ r: 2 }} />
                                 </ComposedChart>
