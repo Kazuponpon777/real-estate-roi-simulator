@@ -16,7 +16,7 @@ import { calculatePmt } from '../utils/calculations';
 import { formatCurrency, formatPercent } from '../utils/formatters';
 import { downloadCSV } from '../utils/csvExport';
 import { saveProjectJSON, loadProjectJSON, importCSV } from '../utils/fileHandler';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ComposedChart, Line, Area, Legend, ReferenceLine } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ComposedChart, Line, Legend, ReferenceLine } from 'recharts';
 import { calculateLongTermProjection, getInvestmentMetrics } from '../utils/simulationProjection';
 import { Slider } from '../components/ui/Slider';
 import { PrintLayout } from '../components/PrintLayout';
@@ -411,6 +411,12 @@ export const Screen5_Analysis: React.FC = () => {
 
     // Investment Metrics
     const investmentMetrics = useMemo(() => getInvestmentMetrics(data, projectionData), [data, projectionData]);
+
+    // 手残り累計がローン残高を上回る「実質完済可能年（損益分岐）」の算出
+    const crossoverYear = useMemo(() => {
+        const found = projectionData.find(p => p.accumulatedCashFlow >= p.loanBalance && p.year > 0);
+        return found ? found.year : null;
+    }, [projectionData]);
 
     // 出口戦略シミュレーションの計算
     const exitCapRate = data.advancedSettings?.exitCapRate ?? 6.0;
@@ -836,9 +842,9 @@ export const Screen5_Analysis: React.FC = () => {
                     <Card title="投資回収・損益分岐チャート (累積CF vs ローン残債)" className="bg-white w-full">
                         <div className="flex flex-wrap justify-between items-center mb-4 gap-2 text-xs font-semibold text-[#8c6114] bg-[#fdf5e2] p-3 rounded-xl border border-[#ebd9c5]">
                             <span>
-                                📈 損益分岐点 (自己資金の投資回収年数): 
+                                📈 損益分岐点 (実質完済可能年): 
                                 <span className="text-emerald-700 text-sm font-extrabold ml-1">
-                                    {investmentMetrics.paybackYear ? `${investmentMetrics.paybackYear}年目` : '35年超'}
+                                    {crossoverYear ? `${crossoverYear}年目` : '35年超'}
                                 </span>
                             </span>
                             <span>
@@ -857,14 +863,14 @@ export const Screen5_Analysis: React.FC = () => {
                                     <Tooltip formatter={(value: number | undefined) => formatCurrency(value || 0)} />
                                     <Legend />
                                     <ReferenceLine y={0} stroke="#cbd5e1" strokeWidth={1.5} />
-                                    {investmentMetrics.paybackYear && (
+                                    {crossoverYear && (
                                         <ReferenceLine 
-                                            x={investmentMetrics.paybackYear} 
+                                            x={crossoverYear} 
                                             stroke="#dc2626" 
                                             strokeDasharray="4 4" 
-                                            strokeWidth={2} 
+                                            strokeWidth={2.5} 
                                             label={{ 
-                                                value: `損益分岐点 (${investmentMetrics.paybackYear}年目)`, 
+                                                value: `実質完済可能 (損益分岐): ${crossoverYear}年目`, 
                                                 position: 'insideTopLeft', 
                                                 fill: '#dc2626', 
                                                 fontSize: 10, 
@@ -879,7 +885,7 @@ export const Screen5_Analysis: React.FC = () => {
                                             strokeDasharray="4 4" 
                                             strokeWidth={2} 
                                             label={{ 
-                                                value: `ローン完済 (${Math.max(...data.funding.loans.map(l => l.duration), 0)}年目)`, 
+                                                value: `ローン契約完済 (${Math.max(...data.funding.loans.map(l => l.duration), 0)}年目)`, 
                                                 position: 'insideTopRight', 
                                                 fill: '#2563eb', 
                                                 fontSize: 10, 
@@ -887,7 +893,7 @@ export const Screen5_Analysis: React.FC = () => {
                                             }} 
                                         />
                                     )}
-                                    <Area type="monotone" dataKey="loanBalance" name="ローン残高" stroke="#8c6114" fill="#ebd9c5" fillOpacity={0.3} />
+                                    <Line type="monotone" dataKey="loanBalance" name="ローン残高" stroke="#8c6114" strokeWidth={3} dot={{ r: 2 }} />
                                     <Line type="monotone" dataKey="accumulatedCashFlow" name="累積キャッシュフロー" stroke="#1e3d2f" strokeWidth={3.5} dot={{ r: 2 }} />
                                 </ComposedChart>
                             </ResponsiveContainer>

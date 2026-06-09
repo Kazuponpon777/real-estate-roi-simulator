@@ -1,6 +1,6 @@
 import React from 'react';
 import type { AnnualData } from '../../utils/simulationProjection';
-import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Legend, AreaChart, Area, ReferenceLine } from 'recharts';
+import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Legend, ReferenceLine } from 'recharts';
 
 interface ChartPageProps {
     projectionData: AnnualData[];
@@ -8,8 +8,8 @@ interface ChartPageProps {
 }
 
 export const ChartPage: React.FC<ChartPageProps> = ({ projectionData, pageNumber }) => {
-    // 損益分岐点 (累積キャッシュフローがプラスに転じる年) と ローン完済年の計算
-    const paybackYear = projectionData.find(p => p.accumulatedCashFlow >= 0)?.year ?? null;
+    // 手残り累計がローン残高を上回る「実質完済可能年（損益分岐）」と ローン完済年の計算
+    const paybackYear = projectionData.find(p => p.accumulatedCashFlow >= p.loanBalance && p.year > 0)?.year ?? null;
     const loanFinishYear = projectionData.find(p => p.loanBalance === 0 && p.year > 0)?.year ?? null;
 
     return (
@@ -39,64 +39,53 @@ export const ChartPage: React.FC<ChartPageProps> = ({ projectionData, pageNumber
                 </div>
             </div>
 
-            {/* Sub Charts */}
-            <div className="h-32 grid grid-cols-2 gap-4 flex-shrink-0">
-                <div className="rounded-lg border border-emerald-100 bg-emerald-50/30 p-3 flex flex-col">
-                    <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-wider mb-1">累積キャッシュフロー (損益分岐)</p>
-                    <div className="flex-1 min-h-0">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={projectionData}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#d1fae5" />
-                                <XAxis dataKey="year" fontSize={8} tickLine={false} axisLine={false} />
-                                <YAxis tickFormatter={(val) => `${val / 10000}万`} width={32} fontSize={8} tickLine={false} axisLine={false} />
-                                <ReferenceLine y={0} stroke="#6ee7b7" />
-                                {paybackYear && (
-                                    <ReferenceLine 
-                                        x={paybackYear} 
-                                        stroke="#dc2626" 
-                                        strokeDasharray="3 3" 
-                                        strokeWidth={1.5} 
-                                        label={{ 
-                                            value: `損益分岐: ${paybackYear}年`, 
-                                            position: 'insideTopLeft', 
-                                            fill: '#dc2626', 
-                                            fontSize: 7, 
-                                            fontWeight: 'bold' 
-                                        }} 
-                                    />
-                                )}
-                                <Area type="monotone" dataKey="accumulatedCashFlow" stroke="#059669" fill="#34d399" fillOpacity={0.2} isAnimationActive={false} strokeWidth={1.5} />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-                <div className="rounded-lg border border-violet-100 bg-violet-50/30 p-3 flex flex-col">
-                    <p className="text-[9px] font-bold text-violet-500 uppercase tracking-wider mb-1">ローン残債推移 (完済)</p>
-                    <div className="flex-1 min-h-0">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={projectionData}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ede9fe" />
-                                <XAxis dataKey="year" fontSize={8} tickLine={false} axisLine={false} />
-                                <YAxis tickFormatter={(val) => `${val / 10000}万`} width={32} fontSize={8} tickLine={false} axisLine={false} />
-                                {loanFinishYear && (
-                                    <ReferenceLine 
-                                        x={loanFinishYear} 
-                                        stroke="#2563eb" 
-                                        strokeDasharray="3 3" 
-                                        strokeWidth={1.5} 
-                                        label={{ 
-                                            value: `ローン完済: ${loanFinishYear}年`, 
-                                            position: 'insideTopRight', 
-                                            fill: '#2563eb', 
-                                            fontSize: 7, 
-                                            fontWeight: 'bold' 
-                                        }} 
-                                    />
-                                )}
-                                <Area type="monotone" dataKey="loanBalance" stroke="#7c3aed" fill="#a78bfa" fillOpacity={0.2} isAnimationActive={false} strokeWidth={1.5} />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </div>
+            {/* Sub Chart: 投資回収・損益分岐 (累積CF vs ローン残債) */}
+            <div className="h-32 flex flex-col flex-shrink-0 mt-2">
+                <p className="text-[9px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    投資回収・損益分岐 (累積手残り vs ローン残高) — 実質完済可能年: {paybackYear ? `${paybackYear}年目` : '35年超'}
+                </p>
+                <div className="flex-1 min-h-0 bg-slate-50 border border-slate-200 rounded-lg p-2">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart data={projectionData} margin={{ top: 5, right: 20, left: 10, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                            <XAxis dataKey="year" fontSize={8} tickLine={false} axisLine={false} />
+                            <YAxis tickFormatter={(val) => `${val / 10000}万`} width={32} fontSize={8} tickLine={false} axisLine={false} />
+                            <Legend wrapperStyle={{ fontSize: '8px', paddingTop: '2px' }} iconSize={6} />
+                            <ReferenceLine y={0} stroke="#cbd5e1" />
+                            {paybackYear && (
+                                <ReferenceLine 
+                                    x={paybackYear} 
+                                    stroke="#dc2626" 
+                                    strokeDasharray="3 3" 
+                                    strokeWidth={1.5} 
+                                    label={{ 
+                                        value: `損益分岐: ${paybackYear}年`, 
+                                        position: 'insideTopLeft', 
+                                        fill: '#dc2626', 
+                                        fontSize: 8, 
+                                        fontWeight: 'bold' 
+                                    }} 
+                                />
+                            )}
+                            {loanFinishYear && (
+                                <ReferenceLine 
+                                    x={loanFinishYear} 
+                                    stroke="#2563eb" 
+                                    strokeDasharray="3 3" 
+                                    strokeWidth={1.5} 
+                                    label={{ 
+                                        value: `完済: ${loanFinishYear}年`, 
+                                        position: 'insideTopRight', 
+                                        fill: '#2563eb', 
+                                        fontSize: 8, 
+                                        fontWeight: 'bold' 
+                                    }} 
+                                />
+                            )}
+                            <Line type="monotone" dataKey="loanBalance" name="ローン残高" stroke="#8c6114" strokeWidth={2} dot={false} isAnimationActive={false} />
+                            <Line type="monotone" dataKey="accumulatedCashFlow" name="累積手残り(CF)" stroke="#1e3d2f" strokeWidth={2.5} dot={false} isAnimationActive={false} />
+                        </ComposedChart>
+                    </ResponsiveContainer>
                 </div>
             </div>
         </div>
